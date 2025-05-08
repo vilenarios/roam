@@ -1,0 +1,121 @@
+/* src/styles/details-drawer.css */
+
+/* Backdrop overlay */
+.details-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(6px);
+    z-index: 50;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+  .details-backdrop.open {
+    opacity: 1;
+    pointer-events: all;
+  }
+  
+  /* Drawer panel */
+  .details-drawer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 100%;
+    max-width: 600px;
+    height: 100vh;
+    background: #1a1a1a;
+    color: #f0f0f0;
+    box-shadow: -6px 0 24px rgba(0, 0, 0, 0.8);
+    z-index: 60;
+    padding: var(--gap);
+    overflow-y: auto;
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+    -webkit-overflow-scrolling: touch;
+  }
+  .details-drawer.open {
+    transform: translateX(0);
+  }
+  
+  /* Header */
+  .details-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--gap);
+  }
+  .details-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+  }
+  .details-close-btn {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--accent);
+  }
+  
+  /* Content area with generous spacing */
+  .details-content {
+    margin-top: var(--gap);
+  }
+  .details-content dl {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .details-content dt {
+    font-weight: 600;
+    margin-top: var(--gap);
+  }
+  .details-content dd {
+    margin: 0.25rem 0 0 0;
+    line-height: 1.4;
+  }
+  
+  /* Tags as chips */
+  .tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+  }
+  .tag-item {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 0.25rem 0.75rem;
+    border-radius: 0.25rem;
+    font-size: 0.875rem;
+  }
+  
+  /* JSON view styling */
+  .details-json {
+    background: #222;
+    padding: var(--gap);
+    margin-top: var(--gap);
+    border-radius: 0.25rem;
+    font-family: monospace;
+    font-size: 0.875rem;
+    white-space: pre-wrap;
+    color: #ccc;
+  }
+  
+  /* Responsive adjustments */
+  @media (min-width: 768px) {
+    .details-drawer {
+      max-width: 50vw;
+    }
+  }
+  
+  .more-tags {
+    background: none;
+    border: none;
+    color: var(--accent);
+    cursor: pointer;
+    font-size: 0.875rem;
+    margin-top: var(--gap);
+  }

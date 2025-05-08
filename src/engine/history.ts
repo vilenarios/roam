@@ -1,95 +1,88 @@
-/* -------------------------------------------------------------------------
- * History Store for Surf
- * -------------------------------------------------------------------------
- * Persists visited tx-id list and pointer in IndexedDB via idb-keyval.
- * Supports add / back / forward navigation.
- */
-import { get as idbGet, set as idbSet } from 'idb-keyval'
+// src/engine/history.ts
+import { set, get } from 'idb-keyval'
 import { logger } from '../utils/logger'
+import type { TxMeta } from './query'
 
 const HISTORY_KEY = 'surf-history'
 
-interface HistoryData {
-  past:   string[]
-  pointer: number
-}
-
-let loaded = false
-let data: HistoryData = { past: [], pointer: -1 }
-
-/** Load persisted history (only once) */
-async function loadHistory(): Promise<void> {
-  if (loaded) return
-  loaded = true
-  try {
-    const stored = await idbGet<HistoryData>(HISTORY_KEY)
-    if (
-      stored &&
-      Array.isArray(stored.past) &&
-      typeof stored.pointer === 'number'
-    ) {
-      data = stored
-      logger.info('History loaded', data)
-    }
-  } catch (err) {
-    logger.warn('Failed to load history', err)
-  }
-}
-
-/** Persist current history data */
-async function saveHistory(): Promise<void> {
-  try {
-    await idbSet(HISTORY_KEY, data)
-    logger.debug('History saved', data)
-  } catch (err) {
-    logger.warn('Failed to save history', err)
-  }
+/**
+ * Internal structure of saved history
+ */
+interface HistoryState {
+  index: number
+  items: TxMeta[]
 }
 
 /**
- * Add a new tx-id to history, discarding any "future" entries.
+ * Default empty history
  */
-export async function addHistory(id: string): Promise<void> {
-  await loadHistory()
-  // drop any forward history
-  data.past = data.past.slice(0, data.pointer + 1)
-  data.past.push(id)
-  data.pointer = data.past.length - 1
-  logger.info('Added to history', { id, pointer: data.pointer })
-  await saveHistory()
+const defaultState: HistoryState = { index: -1, items: [] }
+
+/**
+ * Load history state from IndexedDB, fallback to defaultState.
+ */
+async function loadHistory(): Promise<HistoryState> {
+  const stored = await get<HistoryState>(HISTORY_KEY)
+  if (
+    !stored ||
+    !Array.isArray(stored.items)
+  ) {
+    return { ...defaultState }
+  }
+  // Clamp index to valid range
+  const idx = Math.min(Math.max(stored.index, -1), stored.items.length - 1)
+  return { index: idx, items: [...stored.items] }
 }
 
-/** Move back in history; returns new current id or null if at start */
-export async function goBack(): Promise<string | null> {
-  await loadHistory()
-  if (data.pointer > 0) {
-    data.pointer--
-    logger.info('Moved back in history', { pointer: data.pointer })
-    await saveHistory()
-    return data.past[data.pointer]
-  }
-  logger.debug('goBack: at beginning of history')
-  return null
+/**
+ * Persist history state to IndexedDB
+ */
+async function saveHistory(state: HistoryState): Promise<void> {
+  await set(HISTORY_KEY, state)
 }
 
-/** Move forward in history; returns new current id or null if at end */
-export async function goForward(): Promise<string | null> {
-  await loadHistory()
-  if (data.pointer < data.past.length - 1) {
-    data.pointer++
-    logger.info('Moved forward in history', { pointer: data.pointer })
-    await saveHistory()
-    return data.past[data.pointer]
-  }
-  logger.debug('goForward: at end of history')
-  return null
+/**
+ * Add a new transaction to history, trimming any forward states.
+ */
+export async function addHistory(tx: TxMeta): Promise<void> {
+  const state = await loadHistory()
+  // Remove any forward history beyond current index
+  const items = state.items.slice(0, state.index + 1)
+  items.push(tx)
+  const newIndex = items.length - 1
+  const newState: HistoryState = { index: newIndex, items }
+  await saveHistory(newState)
+  logger.debug('History added', { index: newIndex, id: tx.id })
 }
 
-/** Get the current tx-id without modifying pointer */
-export async function getCurrent(): Promise<string | null> {
-  await loadHistory()
-  if (data.pointer >= 0 && data.pointer < data.past.length) {
-    return data.past[data.pointer]
+/**
+ * Move back one step in history, return the previous TxMeta or undefined.
+ */
+export async function goBack(): Promise<TxMeta | undefined> {
+  const state = await loadHistory()
+  if (state.index <= 0) {
+    logger.debug('goBack: at beginning of history')
+    return undefined
   }
-  return null
+  const newIndex = state.index - 1
+  const tx = state.items[newIndex]
+  await saveHistory({ ...state, index: newIndex })
+  logger.debug('History goBack', { newIndex, id: tx.id })
+  return tx
+}
+
+/**
+ * Move forward one step in history, return the next TxMeta or undefined.
+ */
+export async function goForward(): Promise<TxMeta | undefined> {
+  const state = await loadHistory()
+  if (state.index >= state.items.length - 1) {
+    logger.debug('goForward: at end of history')
+    return undefined
+  }
+  const newIndex = state.index + 1
+  const tx = state.items[newIndex]
+  await saveHistory({ ...state, index: newIndex })
+  logger.debug('History goForward', { newIndex, id: tx.id })
+  return tx
 }
