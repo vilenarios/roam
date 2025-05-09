@@ -1,9 +1,13 @@
-// src/engine/fetchQueue.ts
-import { fetchTxsRange, GATEWAYS, getCurrentBlockHeight, type Channel, type TxMeta } from './query'
+import { fetchTxsRange, getCurrentBlockHeight, type Channel, type TxMeta } from './query'
 import { logger } from '../utils/logger'
 
+
+export const GATEWAYS_DATA       = import.meta.env.VITE_GATEWAYS_DATA?.split(',') ?? []
+
 /** How many items left in the queue before triggering a background refill */
-const REFILL_THRESHOLD = 20
+const REFILL_THRESHOLD = 5
+const MIN_OLD_BLOCK = 500_000
+const WINDOW_SIZE = 1000
 
 /** In-memory queue of upcoming transactions for the current channel */
 let queue: TxMeta[] = []
@@ -14,34 +18,102 @@ let isRefilling = false
 /** Track seen IDs to avoid repeats in a session */
 const seenIds = new Set<string>()
 
-/** Sliding window state for 'recent' channel */
-let recentMax = 0
+/** Sliding-window "max" per Channel key (media+recency) */
+const newMaxMap: Record<string, number> = {}
+
+function channelKey(c: Channel): string {
+  return `${c.media}::${c.recency}`
+}
 
 /**
- * Initialize the fetch queue according to channel type and sliding logic
+ * Slide a 1000-block window backwards for "new" channel
+ */
+async function slideNewWindow(channel: Channel): Promise<{ min: number; max: number }> {
+  const key = channelKey(channel)
+
+  if (!(key in newMaxMap)) {
+    newMaxMap[key] = (await getCurrentBlockHeight(GATEWAYS_DATA[0])) - 15 // We go back 15 blocks minimum
+  }
+
+  const max = newMaxMap[key]
+  const min = Math.max(1, max - WINDOW_SIZE + 1)
+  // advance window for next call
+  newMaxMap[key] = min - 1
+
+  return { min, max }
+}
+
+/**
+ * Pick a random 1000-block window for "old" channel
+ */
+async function pickOldWindow(): Promise<{ min: number; max: number }> {
+  const current = await getCurrentBlockHeight(GATEWAYS_DATA[0])
+  // highest block that lets a full WINDOW_SIZE fit
+  const rawCutoff = current - WINDOW_SIZE
+  // if your chain is still “young,” just fallback to 1..current
+  if (rawCutoff <= MIN_OLD_BLOCK) {
+    return { min: 1, max: current }
+  }
+  // pick between your floor and the highest valid start
+  const startFloor = MIN_OLD_BLOCK
+  const startCeil = rawCutoff
+  const min = Math.floor(Math.random() * (startCeil - startFloor + 1)) + startFloor
+  const max = min + WINDOW_SIZE - 1
+  return { min, max }
+}
+
+/**
+ * Fetch all transactions in a given block window (stub for pagination)
+ * TODO: update fetchTxsRange to support pagination and cursor handling
+ */
+async function fetchWindow(
+  media: Channel['media'],
+  min: number,
+  max: number,
+  owner?: string
+): Promise<TxMeta[]> {
+  return fetchTxsRange(media, min, max, owner)
+}
+
+/**
+ * Retry loading until at least one tx is returned
+ */
+async function loadTxsForWindow(
+  loader: () => Promise<TxMeta[]>
+): Promise<TxMeta[]> {
+  let txs: TxMeta[]
+  do {
+    txs = await loader()
+    if (txs.length === 0) {
+      logger.debug('Window returned no transactions, retrying')
+    }
+  } while (txs.length === 0)
+  return txs
+}
+
+/**
+ * Initialize the fetch queue according to channel type
  */
 export async function initFetchQueue(
   channel: Channel
 ): Promise<void> {
   try {
+    queue = []
     logger.info('Initializing fetch queue', { channel })
     let txs: TxMeta[]
 
-    if (channel.recency === 'recent') {
-      // Slide window backwards on each refill
-      const { min, max } = await slideRecentWindow()
-      logger.debug(`Fetching recent window blocks ${min}-${max}`)
-      txs = await fetchTxsRange(channel.media, min, max)
-    } else if (channel.recency === 'new') {
-      // New channel: first window small, then double
-      const { min, max } = await nextNewWindow()
-      logger.debug(`Fetching new channel window blocks ${min}-${max}`)
-      txs = await fetchTxsRange(channel.media, min, max)
+    if (channel.recency === 'new') {
+      txs = await loadTxsForWindow(async () => {
+        const { min, max } = await slideNewWindow(channel)
+        logger.debug(`New window blocks ${min}-${max}`)
+        return fetchWindow(channel.media, min, max, channel.ownerAddress)
+      })
     } else {
-      // Historic: random non-overlapping window in the past
-      const { min, max } = await pickOldWindow()
-      logger.debug(`Fetching historic window blocks ${min}-${max}`)
-      txs = await fetchTxsRange(channel.media, min, max)
+      txs = await loadTxsForWindow(async () => {
+        const { min, max } = await pickOldWindow()
+        logger.debug(`Old window blocks ${min}-${max}`)
+        return fetchWindow(channel.media, min, max, channel.ownerAddress)
+      })
     }
 
     // Filter out already seen
@@ -56,7 +128,7 @@ export async function initFetchQueue(
 }
 
 /**
- * Get next transaction or wait until queue refills
+ * Get next transaction or trigger background refill
  */
 export async function getNextTx(
   channel: Channel
@@ -65,64 +137,21 @@ export async function getNextTx(
     logger.debug('Queue empty — blocking refill')
     await initFetchQueue(channel)
   }
+
   if (queue.length < REFILL_THRESHOLD && !isRefilling) {
     isRefilling = true
     logger.debug('Queue low — background refill')
     initFetchQueue(channel)
       .catch((e) => logger.warn('Background refill failed', e))
-      .finally(() => { isRefilling = false })
+      .finally(() => {
+        isRefilling = false
+      })
   }
+
   const tx = queue.shift()
   if (!tx) {
     throw new Error('Unexpected empty queue after refill')
   }
   logger.debug('getNextTx →', tx.id)
   return tx
-}
-
-// -------------------------------------------------------------------------
-// Sliding window implementations (Now / Recent / Old)
-// -------------------------------------------------------------------------
-const BLOCK_TIME_SEC = 120 // approx. 2 minutes
-const BLOCKS_PER_DAY = Math.floor(24 * 3600 / BLOCK_TIME_SEC)
-
-/**
- * "Now" channel: fixed small window of the last 5 blocks
- */
-async function nextNewWindow(): Promise<{ min: number; max: number }> {
-  const current = await getCurrentBlockHeight(GATEWAYS[0])
-  const max = current
-  const min = Math.max(1, current - 4)
-  return { min, max }
-}
-
-/**
- * "Recent" channel: sliding 24h windows backwards
- */
-async function slideRecentWindow(): Promise<{ min: number; max: number }> {
-  if (!recentMax) {
-    recentMax = await getCurrentBlockHeight(GATEWAYS[0])
-  }
-  const max = recentMax
-  const min = Math.max(1, max - BLOCKS_PER_DAY + 1)
-  // advance window backwards
-  recentMax = min - 1
-  return { min, max }
-}
-
-/**
- * "Old" channel: random day-long window before 7 Recent slices
- */
-async function pickOldWindow(): Promise<{ min: number; max: number }> {
-  const current = await getCurrentBlockHeight(GATEWAYS[0])
-  // define cutoff just before the first recent window
-  const cutoff = Math.max(1, current - 100)
-  // if insufficient history, fall back to entire chain
-  if (cutoff <= BLOCKS_PER_DAY) {
-    return { min: 1, max: cutoff }
-  }
-  // choose a random start so that [min, min+BLOCKS_PER_DAY] fits before cutoff
-  const min = Math.floor(Math.random() * (cutoff - BLOCKS_PER_DAY)) + 1
-  const max = Math.min(cutoff, min + BLOCKS_PER_DAY - 1)
-  return { min, max }
 }

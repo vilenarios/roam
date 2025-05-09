@@ -8,10 +8,7 @@ import { DetailsDrawer } from './components/DetailsDrawer'
 import { SurfButtons } from './components/SurfButtons'
 import { logger } from './utils/logger'
 import type { Channel, TxMeta } from './engine/query'
-import './app.css'
-
-// Default channel for MVP
-const defaultChannel = { media: 'image', recency: 'recent' } as const
+import './styles/app.css'
 
 export function App() {
 
@@ -47,10 +44,11 @@ export function App() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [detailsOpen, setDetailsOpen] = useState(false)
+  const [ownerAddress, setOwnerAddress] = useState<string|undefined>(undefined)
 
   const [media, setMedia]     = useState<Channel['media']>('image')
-  const [recency, setRecency] = useState<Channel['recency']>('recent')
-  const channel: Channel      = { media, recency }
+  const [recency, setRecency] = useState<Channel['recency']>('new')
+  const channel: Channel      = { media, recency, ownerAddress}
 
   // Lock background scroll when details drawer is open
   useEffect(() => {
@@ -66,7 +64,7 @@ export function App() {
         setError('Initialization error, please refresh.')
       })
       setCurrentTx(null)
-  }, [channel.media, channel.recency])
+  }, [channel.media, channel.recency, ownerAddress])
 
   const txUrl = currentTx ? `https://arweave.net/${currentTx.id}` : ''
 
@@ -75,7 +73,7 @@ export function App() {
     setError(null)
     setLoading(true)
     try {
-      const tx = await getNextTx(defaultChannel)
+      const tx = await getNextTx(channel)
       await addHistory(tx)
       setCurrentTx(tx)
     } catch (e) {
@@ -129,11 +127,6 @@ export function App() {
     }
   }
 
-  // Preview button opens raw tx
-  const handlePreview = () => {
-    if (txUrl) window.open(txUrl, '_blank')
-  }
-
   return (
     <div class="app">
       <header><h1>Surf the Permaweb</h1></header>
@@ -170,6 +163,13 @@ export function App() {
         >
           🌐 Websites
         </button>
+        {/* Text */}
+        <button 
+          class={media==='text' ? 'active' : ''} 
+          onClick={() => setMedia('text')}
+        >
+          📖 Text
+        </button>
       </div>
 
       <div class="time-picker">
@@ -178,14 +178,22 @@ export function App() {
           onClick={() => setRecency('new')}
         >⏰ New</button>
         <button
-          class={recency==='recent' ? 'active' : ''}
-          onClick={() => setRecency('recent')}
-        >🕒 Recent</button>
-        <button
           class={recency==='old'    ? 'active' : ''}
           onClick={() => setRecency('old')}
         >🗄️ Old</button>
       </div>
+
+      {ownerAddress && (
+        <button
+          class="clear-filter"
+          onClick={() => {
+            setOwnerAddress(undefined)
+            setCurrentTx(null)
+          }}
+        >
+          ✖️ Show everyone
+        </button>
+      )}
 
       <div class="controls">
         <SurfButtons
@@ -209,12 +217,17 @@ export function App() {
             <div class="media-actions">
               <button class="share-btn" onClick={handleShare}>Share</button>
               <button class="details-btn" onClick={() => setDetailsOpen(true)}>Details</button>
-              <button class="preview-btn" onClick={handlePreview}>Preview</button>
+              <button
+                class="fab owner-fab"
+                onClick={() => setOwnerAddress(currentTx.owner.address)}
+                title="More from this owner"
+              >
+                👤
+              </button>
             </div>
           </>
         )}
       </main>
-
       <DetailsDrawer
         txMeta={currentTx}
         open={detailsOpen}

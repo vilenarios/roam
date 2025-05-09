@@ -1,11 +1,71 @@
 /* src/styles/media-view.css */
+.image-container {
+  position: relative;
+}
+.image-container.zoomed {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw; height: 100vh;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 9999;
+}
+.image-container.zoomed .media-image {
+  max-width: 100%; max-height: 100%;
+  object-fit: contain;
+  cursor: zoom-out;
+}
+.media-image {
+  cursor: zoom-in;
+  max-width: 100%;
+  height: auto;
+}
+
+.media-text {
+  white-space: pre-wrap;
+  overflow-y: auto;
+  max-height: 80vh;
+  padding: 1rem;
+  background: #f9f9f9;
+  border-radius: 0.25rem;
+}
+
+.media-pdf, .media-iframe {
+  width: 80%;
+  max-width: 800px;
+  height: 50vh;
+  border: none;
+}
+
+/* Hide overlay buttons when an image is zoomed */
+.zoomed-media .media-actions,
+.zoomed-media .clear-filter {
+  display: none !important;
+}
+
+.open-tab-btn {
+  position: absolute;
+  bottom: 0.5rem;
+  right: 2rem;
+  background: rgba(0,0,0,0.6);
+  color: #fff;
+  border: none;
+  padding: 0.5rem;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  z-index: 1000;
+}
+
+.open-tab-btn:hover {
+  background: rgba(0,0,0,0.8);
+}
 
 /* Parent container holding media and actions, centered and responsive */
 .media-view-container {
     display: flex;
     flex-direction: column;
     align-items: center;
-    width: 80%;
+    width: 90%;
     max-width: 800px;       /* cap on desktop */
     margin: 0 auto;
     padding: var(--gap);
@@ -72,19 +132,12 @@
 .media-audio {
     width: 50vh;
     height: 5vh;
+    align-content: center;
   }
   
   /* Video player full-width & height-constrained */
   .media-video {
     width: 100%;
     max-height: 70vh;
-    object-fit: contain;
-  }
-  
-  /* Iframe full-screen within wrapper */
-  .media-iframe {
-    width: 50vh;
-    height: 50vh;       /* ensure large enough on desktop */
-    border: none;
     object-fit: contain;
   }
