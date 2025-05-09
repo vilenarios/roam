@@ -149,7 +149,7 @@ export const MediaView = ({ txMeta, onDetails }: MediaViewProps) => {
     if (
       contentType.startsWith('text/html') ||
       contentType === 'application/xhtml+xml' ||
-      contentType === 'application/x.arweave-manifest+json'
+      contentType.startsWith('application/x.arweave-manifest')
     ) {
       return (
         <div className="media-element website-container">

@@ -22,6 +22,13 @@ export function App() {
   }
   const handleReject = () => {
     setRejected(true)
+    window.open('', '_self')
+    window.close()
+    window.location.href = 'about:blank'
+  }
+
+  if (rejected) {
+    return null
   }
 
   // If not yet accepted, show consent modal
@@ -45,6 +52,7 @@ export function App() {
   const [error, setError] = useState<string | null>(null)
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [ownerAddress, setOwnerAddress] = useState<string|undefined>(undefined)
+  const [queueLoading, setQueueLoading] = useState(false)
 
   const [media, setMedia]     = useState<Channel['media']>('image')
   const [recency, setRecency] = useState<Channel['recency']>('new')
@@ -57,12 +65,14 @@ export function App() {
 
   // Initialize fetch queue on mount
   useEffect(() => {
+    setQueueLoading(true)
     initFetchQueue(channel)
       .then(() => logger.info('Fetch queue initialized'))
       .catch((e) => {
         logger.error('Initialization failed', e)
         setError('Initialization error, please refresh.')
       })
+      .finally(() => setQueueLoading(false))
       setCurrentTx(null)
   }, [channel.media, channel.recency, ownerAddress])
 
@@ -183,26 +193,26 @@ export function App() {
         >🗄️ Old</button>
       </div>
 
-      {ownerAddress && (
-        <button
-          class="clear-filter"
-          onClick={() => {
-            setOwnerAddress(undefined)
-            setCurrentTx(null)
-          }}
-        >
-          ✖️ Show everyone
-        </button>
-      )}
-
       <div class="controls">
         <SurfButtons
           onNext={handleNext}
           onBack={handleBack}
-          disableNext={loading}
+          disableNext={loading || queueLoading}
           disableBack={!currentTx || loading}
         />
       </div>
+
+      {ownerAddress && (
+          <button
+            class="clear-filter"
+            onClick={() => {
+              setOwnerAddress(undefined)
+              setCurrentTx(null)
+            }}
+          >
+            ✖️ Show everyone
+          </button>
+      )}
 
       {error && <div class="error">{error}</div>}
 

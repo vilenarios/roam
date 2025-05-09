@@ -60,6 +60,29 @@
   background: rgba(0,0,0,0.8);
 }
 
+.media-actions {
+  display: flex;
+  justify-content: center;
+  gap: var(--gap);
+}
+
+
+.media-actions button {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  font-weight: bold;
+  box-shadow: 0 4px 6px var(--shadow);
+  cursor: pointer;
+  transition: transform 0.1s ease, opacity 0.2s ease;
+}
+
+.media-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Parent container holding media and actions, centered and responsive */
 .media-view-container {
     display: flex;
@@ -129,9 +152,9 @@
   }
 
   /* Audio player full-width */
-.media-audio {
-    width: 50vh;
-    height: 5vh;
+  .media-audio {
+    width: 320px;
+    height: 30px;
     align-content: center;
   }
   
