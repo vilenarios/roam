@@ -5,9 +5,9 @@ import '../styles/media-view.css'
 import { GATEWAYS_DATA } from '../engine/fetchQueue'
 
 // Thresholds (bytes) above which we prompt manual load
-const IMAGE_LOAD_THRESHOLD = 15 * 1024 * 1024
-const VIDEO_LOAD_THRESHOLD = 50 * 1024 * 1024
-const AUDIO_LOAD_THRESHOLD = 10 * 1024 * 1024
+const IMAGE_LOAD_THRESHOLD = 20 * 1024 * 1024
+const VIDEO_LOAD_THRESHOLD = 200 * 1024 * 1024
+const AUDIO_LOAD_THRESHOLD = 25 * 1024 * 1024
 
 export interface MediaViewProps {
   /** Full transaction metadata fetched from GraphQL */
@@ -36,6 +36,7 @@ export const MediaView = ({ txMeta, onDetails }: MediaViewProps) => {
   const [loadingText, setLoadingText] = useState(false)
   const [errorText, setErrorText] = useState<string | null>(null)
   // Zoom state for images
+  const [privacyOn, setPrivacyOn] = useState(false)
   const [zoomed, setZoomed] = useState(false)
 
   // Reset on change
@@ -165,15 +166,28 @@ export const MediaView = ({ txMeta, onDetails }: MediaViewProps) => {
   }
 
   return (
-    <div className="media-view-container">
-      <div className="media-wrapper">
-        {renderMedia()}
-      </div>
-      {onDetails && (
-        <div className="media-actions">
-          <button className="details-btn" onClick={onDetails}>Details</button>
-        </div>
-      )}
+<div className="media-view-container">
+    {/* privacy toggle button */}
+    <button
+      className="privacy-toggle-btn"
+      onClick={() => setPrivacyOn(p => !p)}
+      title={privacyOn ? 'Hide Privacy Screen' : 'Show Privacy Screen'}
+    >
+      {privacyOn ? '🔓' : '🔒'}
+    </button>
+
+    <div className="media-wrapper">
+      {renderMedia()}
+      {/* privacy screen overlay */}
+      {privacyOn && <div className="privacy-screen" />}  
     </div>
+
+    {/* details button */}
+    {onDetails && (
+      <div className="media-actions">
+        <button className="details-btn" onClick={onDetails}>Details</button>
+      </div>
+    )}
+  </div>
   )
 }

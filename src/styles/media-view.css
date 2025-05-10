@@ -28,18 +28,22 @@
   padding: 1rem;
   background: #f9f9f9;
   border-radius: 0.25rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .media-pdf, .media-iframe {
-  width: 80%;
-  max-width: 800px;
-  height: 50vh;
+  height: 310px;
   border: none;
+  background-color: #fafafa;
+  overflow-y: auto;
+  position: relative;
 }
 
 /* Hide overlay buttons when an image is zoomed */
 .zoomed-media .media-actions,
-.zoomed-media .clear-filter {
+.zoomed-media .clear-filter,
+.zoomed-media .app-footer {
   display: none !important;
 }
 
@@ -83,6 +87,11 @@
   cursor: not-allowed;
 }
 
+.media-container {
+  flex: 1 0 auto;
+  padding-bottom: 1rem; /* adjust to match footer height */
+}
+
 /* Parent container holding media and actions, centered and responsive */
 .media-view-container {
     display: flex;
@@ -92,6 +101,8 @@
     max-width: 800px;       /* cap on desktop */
     margin: 0 auto;
     padding: var(--gap);
+    overflow-y: auto;
+    padding-bottom: 1rem;
   }
   
   /* Caps media height so details toggle and controls stay visible */
@@ -99,12 +110,12 @@
     width: 100%;
     max-height: 70vh;
     position: relative;
-    background: var(--bg-elevated, #111);
     border-radius: 0.5rem;
     overflow: hidden;
     display: flex;
     align-items: center;
     justify-content: center;
+    
   }
   
   /* Images and videos letterboxed to fit wrapper */
@@ -118,14 +129,13 @@
   .media-loading,
   .media-error,
   .media-load-btn {
-    position: absolute;
     z-index: 1;
     color: var(--accent);
     padding: var(--gap);
   }
   
   .media-load-btn {
-    background: none;
+    background: #fafafa;
     border: 2px dashed var(--accent);
     border-radius: 0.5rem;
     cursor: pointer;
@@ -164,3 +174,30 @@
     max-height: 70vh;
     object-fit: contain;
   }
+
+  /* privacy toggle button */
+.privacy-toggle-btn {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  z-index: 50000;
+  background: rgba(0,0,0,0.4);
+  border: none;
+  color: #fff;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  cursor: pointer;
+}
+
+/* screen overlay */
+.privacy-screen {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  /* half-opaque plus blur */
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(6px);
+  z-index: 4;
+}

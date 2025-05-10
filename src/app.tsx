@@ -12,6 +12,8 @@ import './styles/app.css'
 
 export function App() {
 
+  const [showAbout, setShowAbout] = useState(false)
+
   // Consent state: load from localStorage
   const [accepted, setAccepted] = useState<boolean>(() => localStorage.getItem('consent') === 'true')
   const [rejected, setRejected] = useState<boolean>(false)
@@ -243,6 +245,42 @@ export function App() {
         open={detailsOpen}
         onClose={() => setDetailsOpen(false)}
       />
+      <footer className="app-footer">
+      <nav>
+            <a
+              href="#"
+              className="footer-link"
+              onClick={(e) => {
+                e.preventDefault()
+                setShowAbout(true)
+              }}   
+            > About </a>
+          <span className="footer-separator">·</span>
+          <a href="https://github.com/your-repo" target="_blank" rel="noopener noreferrer" className="footer-link">GitHub</a>
+        </nav>
+      <div className="footer-copy">ⓐ {new Date().getFullYear()} Surf the Permaweb</div>
+    </footer>
+      {/* About Modal */}
+        {showAbout && (
+          <div className="about-modal">
+            <div className="modal-backdrop" onClick={() => setShowAbout(false)} />
+            <div className="modal-content">
+              <h2>About Surf the Permaweb</h2>
+              <p>
+                Welcome to Surf the Permaweb! 🌊🏄🌊
+                <br />
+                This playful app lets you randomly explore Arweave content:
+                images, music, videos, websites, and even text documents.
+                Just pick a channel, choose New or Old, and click Next to
+                catch your next data wave. Filter by creator, dive deep into
+                history, or share those hidden gems!
+              </p>
+              <button className="modal-close-btn" onClick={() => setShowAbout(false)}>
+                Close
+              </button>
+            </div>
+          </div>
+      )}
     </div>
   )
 }
