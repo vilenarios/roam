@@ -29,32 +29,6 @@
   cursor: not-allowed;
 }
 
-.channel-picker,
-.time-picker {
-  display: flex;
-  justify-content: center;
-  gap: var(--gap);
-  margin-bottom: var(--gap);
-  flex-wrap: wrap;                /* wrap into multiple rows */
-
-}
-
-.channel-picker button {
-  background: none;
-  padding: 0.25rem .5rem;
-  cursor: pointer;
-  flex: 1 1 calc(10% - var(--gap)); /* two per row on narrow screens */
-  min-width: 90px;
-  height: 45px;
-  font-size: 0.9em;
-  border: none;
-  border-radius: 0.5rem;
-  font-weight: bold;
-  box-shadow: 0 4px 6px var(--shadow);
-  transition: transform 0.1s ease, opacity 0.2s ease;
-  background-color: #626262
-}
-
 .controls button {
   padding: 0.75rem 1.5rem;
   border: none;
@@ -64,28 +38,6 @@
   box-shadow: 0 4px 6px var(--shadow);
   cursor: pointer;
   transition: transform 0.1s ease, opacity 0.2s ease;
-}
-
-.time-picker button {
-  background: none;
-  padding: 0.25rem .5rem;
-  cursor: pointer;
-  flex: 1 1 calc(10% - var(--gap)); /* two per row on narrow screens */
-  min-width: 90px;
-  height: 45px;
-  font-size: 0.9em;
-  border: none;
-  border-radius: 0.5rem;
-  font-weight: bold;
-  box-shadow: 0 4px 6px var(--shadow);
-  transition: transform 0.1s ease, opacity 0.2s ease;
-  background-color: #626262
-}
-
-.channel-picker button.active,
-.time-picker button.active  {
-  background: #a9a3aa;
-  color: var(--bg-elevated);
 }
 
 /* Consent Overlay Backdrop */
@@ -145,13 +97,6 @@
 
 .consent-btn:hover {
   opacity: 0.9;
-}
-
-@media (min-width: 600px) {
-  .channel-picker button, 
-  .time-picker button {
-    flex: 0 1 auto;              /* back to auto‐sizing on desktop */
-  }
 }
 
 .app-footer {

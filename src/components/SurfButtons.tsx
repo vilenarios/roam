@@ -1,8 +1,8 @@
-// src/components/SurfButtons.tsx
+// src/components/RoamButtons.tsx
 import { useEffect } from 'preact/hooks'
 import { logger } from '../utils/logger'
 
-export interface SurfButtonsProps {
+export interface RoamButtonsProps {
   onNext: () => Promise<void>
   onBack: () => Promise<void>
   disableNext?: boolean
@@ -14,12 +14,12 @@ export interface SurfButtonsProps {
  * - Spacebar → Next
  * - ArrowLeft → Back
  */
-export const SurfButtons = ({
+export const RoamButtons = ({
   onNext,
   onBack,
   disableNext = false,
   disableBack = false,
-}: SurfButtonsProps) => {
+}: RoamButtonsProps) => {
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       // ignore if typing in inputs

@@ -3,9 +3,9 @@
  * -------------------------------------------------------------------------- */
 type Level = 'debug' | 'info' | 'warn' | 'error'
 
-/** Prefix logs so all Surf output is grep-able. */
+/** Prefix logs so all Roam output is grep-able. */
 function log(level: Level, msg: string, data?: unknown) {
-  const prefix = `[Surf] [${level.toUpperCase()}]`
+  const prefix = `[Roam] [${level.toUpperCase()}]`
   if (data) {
     // eslint-disable-next-line no-console
     console[level](`${prefix} ${msg}`, data)

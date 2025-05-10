@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 # ---------------------------------------------------------------------------
-# Surf Web‑App Scaffold Script (v3)
+# Roam Web‑App Scaffold Script (v3)
 # ---------------------------------------------------------------------------
-# This idempotent script bootstraps the Surf permaweb project.
+# This idempotent script bootstraps the Roam permaweb project.
 # Requirements: Node ≥18, pnpm ≥8, git. Run from the directory where you want
 # the project folder created:
-#   chmod +x surf_scaffold.sh && ./surf_scaffold.sh
+#   chmod +x roam_scaffold.sh && ./roam_scaffold.sh
 # ---------------------------------------------------------------------------
 set -euo pipefail
 
-APP_NAME="surf"
+APP_NAME="roam"
 
 if [[ -d $APP_NAME ]]; then
   echo "🛑  Directory '$APP_NAME' already exists. Remove it or choose another location." >&2
@@ -120,7 +120,7 @@ EOF
 # 6. Finish                                                                  #
 ##############################################################################
 
-echo "✅  Surf scaffold ready. Next steps:"
+echo "✅  Roam scaffold ready. Next steps:"
 echo "   cd $APP_NAME"
 echo "   pnpm install"  # ensure lockfile completes the install
 

@@ -3,7 +3,7 @@ import { set, get } from 'idb-keyval'
 import { logger } from '../utils/logger'
 import type { TxMeta } from './query'
 
-const HISTORY_KEY = 'surf-history'
+const HISTORY_KEY = 'roam-history'
 
 /**
  * Internal structure of saved history

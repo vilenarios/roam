@@ -3,7 +3,7 @@ import { logger } from '../utils/logger'
 // --------------------------------------------------------------------------
 // Types & Interfaces
 // --------------------------------------------------------------------------
-export type MediaType = 'image' | 'video' | 'music' | 'website' | 'text'
+export type MediaType = 'image' | 'video' | 'music' | 'website' | 'text' | 'anything'
 export type Recency   = 'new' | 'old'
 export interface Channel {
   media: MediaType
@@ -25,12 +25,25 @@ export interface TxMeta {
 // --------------------------------------------------------------------------
 // Content-Type mapping per media
 // --------------------------------------------------------------------------
-const CONTENT_TYPES: Record<MediaType, string[]> = {
+const BASE_CONTENT_TYPES: Record<Exclude<MediaType, 'anything'>, string[]> = {
   image:   ['image/png', 'image/jpeg', 'image/webp', 'image/gif'],
   video:   ['video/mp4', 'video/webm'],
   music:   ['audio/mpeg','audio/mp3','audio/wav'],
   website: ['application/x.arweave-manifest+json','text/html'],
-  text: ['text/markdown','application/pdf'],
+  text:    ['text/markdown','application/pdf'],
+}
+  
+// Build full map including "anything" as the union of all other arrays
+export const CONTENT_TYPES: Record<MediaType, string[]> = {
+  ...BASE_CONTENT_TYPES,
+  anything: Object
+    .values(BASE_CONTENT_TYPES)
+    .reduce<string[]>((acc, arr) => {
+      arr.forEach((ct) => {
+        if (!acc.includes(ct)) acc.push(ct)
+      })
+      return acc
+    }, []),
 }
 
 // --------------------------------------------------------------------------
@@ -147,7 +160,7 @@ export async function fetchTxsRange(
         const variables = { ct, min: minHeight, max: maxHeight, first: PAGE_SIZE, after }
         const payload = {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-surf-client': 'surf-mvp' },
+          headers: { 'Content-Type': 'application/json', 'x-roam-client': 'roam-mvp' },
           body: JSON.stringify({ query, variables })
         }
         const data = await fetchWithRetry(gw, payload)

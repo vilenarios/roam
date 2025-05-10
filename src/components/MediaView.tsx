@@ -88,7 +88,7 @@ export const MediaView = ({ txMeta, onDetails, privacyOn, onPrivacyToggle }: Med
           <img
             className="media-image"
             src={manualLoad ? undefined : directUrl}
-            alt="Surf content"
+            alt="Roam content"
             onClick={() => setZoomed(z => !z)}
           />
         </div>
