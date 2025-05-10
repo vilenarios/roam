@@ -6,8 +6,40 @@ import {
 } from "./query";
 import { logger } from "../utils/logger";
 
-export const GATEWAYS_DATA =
-  import.meta.env.VITE_GATEWAYS_DATA?.split(",") ?? [];
+// Read and trim configured gateways
+const rawGateways = import.meta.env.VITE_GATEWAYS_DATA_SOURCE
+  ?.split(",")
+  .map((s: string) => s.trim())
+  .filter(Boolean) ?? [];
+
+// Determine primary and fallback gateways
+const fallbackGateway = rawGateways[1] || rawGateways[0] || "https://arweave.net";
+
+// Build GATEWAY_DATA_SOURCE array with 'self' mapping logic
+export const GATEWAY_DATA_SOURCE: string[] = rawGateways
+  .map((gw: string) => {
+    if (gw === "self") {
+      const host = window.location.hostname.toLowerCase();
+      // If running on localhost or on an .ar.io domain, use fallback
+      if (
+        host === "localhost" ||
+        host === "127.0.0.1" ||
+        host.endsWith(".ar.io")
+      ) {
+        return fallbackGateway;
+      }
+      // Otherwise use the current origin
+      return window.location.origin;
+    }
+    return gw;
+  })
+  // Remove any empty strings
+  .filter(Boolean);
+
+// Ensure we have at least one gateway
+if (GATEWAY_DATA_SOURCE.length === 0) {
+  GATEWAY_DATA_SOURCE.push("https://arweave.net");
+}
 
 /** How many items left in the queue before triggering a background refill */
 const REFILL_THRESHOLD = 5;
@@ -43,7 +75,7 @@ async function slideNewWindow(
   const key = channelKey(channel);
   if (!(key in newMaxMap)) {
     // Seed a bit behind the tip
-    const height = await getCurrentBlockHeight(GATEWAYS_DATA[0]);
+    const height = await getCurrentBlockHeight(GATEWAY_DATA_SOURCE[0]);
     newMaxMap[key] = Math.max(1, height - 15);
   }
   const max = newMaxMap[key];
@@ -56,7 +88,7 @@ async function slideNewWindow(
  * Pick a random WINDOW_SIZE-block window for "old" channel
  */
 async function pickOldWindow(): Promise<{ min: number; max: number }> {
-  const current = await getCurrentBlockHeight(GATEWAYS_DATA[0]);
+  const current = await getCurrentBlockHeight(GATEWAY_DATA_SOURCE[0]);
   const rawCutoff = current - WINDOW_SIZE;
   if (rawCutoff <= MIN_OLD_BLOCK) {
     return { min: 1, max: current };
@@ -126,7 +158,7 @@ export async function initFetchQueue(channel: Channel): Promise<void> {
       logger.warn(
         "No results for owner-filtered window; expanding to full history"
       );
-      const current = await getCurrentBlockHeight(GATEWAYS_DATA[0]);
+      const current = await getCurrentBlockHeight(GATEWAY_DATA_SOURCE[0]);
       txs = await fetchWindow(channel.media, 1, current, channel.ownerAddress);
     }
 

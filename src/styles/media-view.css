@@ -43,7 +43,8 @@
 /* Hide overlay buttons when an image is zoomed */
 .zoomed-media .media-actions,
 .zoomed-media .clear-filter,
-.zoomed-media .app-footer {
+.zoomed-media .app-footer,
+.zoomed-media .privacy-toggle-btn {
   display: none !important;
 }
 
@@ -114,8 +115,7 @@
     overflow: hidden;
     display: flex;
     align-items: center;
-    justify-content: center;
-    
+    justify-content: center; 
   }
   
   /* Images and videos letterboxed to fit wrapper */
@@ -198,6 +198,6 @@
   height: 100%;
   /* half-opaque plus blur */
   background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(6px);
+  backdrop-filter: blur(15px);
   z-index: 4;
 }

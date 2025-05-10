@@ -52,7 +52,7 @@
   font-weight: bold;
   box-shadow: 0 4px 6px var(--shadow);
   transition: transform 0.1s ease, opacity 0.2s ease;
-  background-color: #f9f9f9
+  background-color: #626262
 }
 
 .controls button {
@@ -79,12 +79,12 @@
   font-weight: bold;
   box-shadow: 0 4px 6px var(--shadow);
   transition: transform 0.1s ease, opacity 0.2s ease;
-  background-color: #f9f9f9
+  background-color: #626262
 }
 
 .channel-picker button.active,
 .time-picker button.active  {
-  background: #a09aa1;
+  background: #a9a3aa;
   color: var(--bg-elevated);
 }
 

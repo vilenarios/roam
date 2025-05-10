@@ -49,6 +49,8 @@ export function App() {
     )
   }
 
+  const [privacyOn, setPrivacyOn] = useState<boolean>(true)
+  const togglePrivacy = () => setPrivacyOn(p => !p)
   const [currentTx, setCurrentTx] = useState<TxMeta | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -225,7 +227,10 @@ export function App() {
         )}
         {currentTx && !loading && (
           <>
-            <MediaView txMeta={currentTx} />
+            <MediaView txMeta={currentTx}
+             privacyOn={privacyOn}
+             onPrivacyToggle={togglePrivacy}
+             />
             <div class="media-actions">
               <button class="share-btn" onClick={handleShare}>Share</button>
               <button class="details-btn" onClick={() => setDetailsOpen(true)}>Details</button>

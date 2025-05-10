@@ -2,7 +2,7 @@ import { h } from 'preact'
 import { useState, useEffect } from 'preact/hooks'
 import type { TxMeta } from '../engine/query'
 import '../styles/media-view.css'
-import { GATEWAYS_DATA } from '../engine/fetchQueue'
+import { GATEWAY_DATA_SOURCE } from '../engine/fetchQueue'
 
 // Thresholds (bytes) above which we prompt manual load
 const IMAGE_LOAD_THRESHOLD = 20 * 1024 * 1024
@@ -14,12 +14,14 @@ export interface MediaViewProps {
   txMeta: TxMeta
   /** Optional callback to open details drawer */
   onDetails?: () => void
+  privacyOn: boolean
+  onPrivacyToggle: () => void
 }
 
-export const MediaView = ({ txMeta, onDetails }: MediaViewProps) => {
+export const MediaView = ({ txMeta, onDetails, privacyOn, onPrivacyToggle }: MediaViewProps) => {
   const { id, data: { size }, tags } = txMeta
   const contentType = tags.find(t => t.name === 'Content-Type')?.value || ''
-  const directUrl = `${GATEWAYS_DATA[0]}/${id}`
+  const directUrl = `${GATEWAY_DATA_SOURCE[0]}/${id}`
 
   // Manual‐load flags
   const [manualLoad, setManualLoad] = useState(
@@ -36,7 +38,6 @@ export const MediaView = ({ txMeta, onDetails }: MediaViewProps) => {
   const [loadingText, setLoadingText] = useState(false)
   const [errorText, setErrorText] = useState<string | null>(null)
   // Zoom state for images
-  const [privacyOn, setPrivacyOn] = useState(false)
   const [zoomed, setZoomed] = useState(false)
 
   // Reset on change
@@ -170,7 +171,7 @@ export const MediaView = ({ txMeta, onDetails }: MediaViewProps) => {
     {/* privacy toggle button */}
     <button
       className="privacy-toggle-btn"
-      onClick={() => setPrivacyOn(p => !p)}
+      onClick={onPrivacyToggle}
       title={privacyOn ? 'Hide Privacy Screen' : 'Show Privacy Screen'}
     >
       {privacyOn ? '🔓' : '🔒'}

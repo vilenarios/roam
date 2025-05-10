@@ -53,7 +53,7 @@ export async function getCurrentBlockHeight(gateway: string): Promise<number> {
     const res = await fetch(`${gateway}/info`)
     if (!res.ok) throw new Error(`Info fetch failed: ${res.status}`)
     const json = await res.json()
-    const height = json.network?.height
+    const height = json.height
     if (typeof height !== 'number') throw new Error('Invalid /info response')
     return height
   } catch (err) {
