@@ -6,6 +6,34 @@
   text-align: center;
 }
 
+.app-header {
+  position: relative;
+  text-align: center;
+  padding: 0;
+  margin-bottom: var(--gap);
+}
+
+.app-header .banner {
+  width: 100%;
+  overflow: hidden;
+  /* cap the banner height */
+  max-height: 200px;
+}
+
+.app-header .banner img {
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+}
+
+/* Adjust the h1 to sit over or under the banner as you like */
+.app-header h1 {
+  margin: 0.5rem 0;
+  color: var(--fg);
+  /* optional: if you want the title overlayed on the banner: */
+  /* position: absolute; bottom: 1rem; left: 50%; transform: translateX(-50%); */
+}
+
 .controls {
   display: flex;
   justify-content: center;

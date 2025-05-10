@@ -107,7 +107,11 @@ export function App() {
 
   return (
     <div className="app">
-      <header><h1>Roam the Permaweb</h1></header>
+      <header className="app-header">
+        <div className="banner">
+          <img src="/assets/banner.png" alt="Roam the Permaweb Banner" />
+        </div>
+      </header>
 
       {/* Controls with Channels button */}
       <div className="controls">
@@ -186,7 +190,7 @@ export function App() {
               }}   
             > About </a>
           <span className="footer-separator">·</span>
-          <a href="https://github.com/your-repo" target="_blank" rel="noopener noreferrer" className="footer-link">GitHub</a>
+          <a href="https://github.com/vilenarios/roam" target="_blank" rel="noopener noreferrer" className="footer-link">GitHub</a>
         </nav>
       <div className="footer-copy">ⓐ {new Date().getFullYear()} Roam the Permaweb</div>
     </footer>
