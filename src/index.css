@@ -19,6 +19,9 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+    /* — Brand Gradients — */
+    --gradient-primary: 90deg, #FF6A00 0%, #FF00CC 100%;   /* Warm sunset */
+    --gradient-secondary: 90deg, #00FFE1 0%, #00A3FF 100%; /* Cool teal waves */
 }
 
 /* Ensure full-page scrolling and remove body centering which blocked overflow */

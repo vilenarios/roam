@@ -19,7 +19,7 @@ export interface TxMeta {
   quantity: { ar: string }
   tags: { name: string; value: string }[]
   data: { size: number }
-  block: { height: number }
+  block: { height: number, timestamp: number }
 }
 
 // --------------------------------------------------------------------------
@@ -140,7 +140,7 @@ export async function fetchTxsRange(
             quantity { ar }
             tags { name value }
             data { size }
-            block { height }
+            block { height timestamp }
           }
         }
         pageInfo {

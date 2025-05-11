@@ -1,5 +1,4 @@
 // src/components/DetailsDrawer.tsx
-import { h } from 'preact'
 import type { JSX } from 'preact/jsx-runtime'
 import type { TxMeta } from '../engine/query'
 import '../styles/details-drawer.css'
@@ -45,6 +44,9 @@ export const DetailsDrawer = ({ txMeta, open, onClose }: DetailsDrawerProps): JS
               </a>
             </dd>
 
+            <dt>Timestamp</dt>
+            <dd>{new Date(block.timestamp * 1000).toLocaleString()}</dd>
+
             <dt>Block Height</dt>
             <dd>{block.height}</dd>
 
@@ -59,9 +61,9 @@ export const DetailsDrawer = ({ txMeta, open, onClose }: DetailsDrawerProps): JS
 
             <dt>Tags</dt>
             <dd>
-            <div class="tag-list">
+            <div className="tag-list">
                 {visibleTags.map(tag => (
-                <span class="tag-item" key={`${tag.name}-${tag.value}`}>
+                <span className="tag-item" key={`${tag.name}-${tag.value}`}>
                     <strong>{tag.name}:</strong> {tag.value}
                 </span>
                 ))}

@@ -27,7 +27,6 @@
     width: 100%;
     max-width: 320px;
     height: 100vh;
-    background: var(--bg-elevated, #1a1a1a);
     color: var(--fg, #808080);
     z-index: 60;
     padding: var(--gap);
@@ -54,12 +53,12 @@
   
   /* Controls button for opening drawer */
   .controls .channels-btn {
-    background: var(--bg-elevated, #1a1a1a);
     border: none;
     padding: 0.5rem;
     border-radius: 0.5rem;
     font-size: 1.25rem;
     cursor: pointer;
+    background: var(--bg-elevated, #1a1a1a);
     box-shadow: 0 2px 8px rgba(141, 141, 141, 0.3);
     color: var(--fg);
   }
@@ -100,8 +99,8 @@
   .channels-drawer .channel-picker button.active,
   .channels-drawer .time-picker button.active,
   .channels-drawer .owner-filter button.active {
-    background: var(--accent, #88f);
-    color: #fff;
+    background: linear-gradient(var(--gradient-primary));
+    color: white;
     box-shadow: 0 4px 6px var(--shadow);
   }
   

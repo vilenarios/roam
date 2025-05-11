@@ -1,5 +1,4 @@
 // src/App.tsx
-import { h } from 'preact'
 import { useState, useEffect } from 'preact/hooks'
 import { initFetchQueue, getNextTx } from './engine/fetchQueue'
 import { addHistory, goBack } from './engine/history'
@@ -9,6 +8,8 @@ import { logger } from './utils/logger'
 import type { Channel, TxMeta } from './engine/query'
 import './styles/app.css'
 import './styles/channels-drawer.css'
+import { useAdInjector } from './hooks/useAdInjector'
+import { AdOverlay } from './components/AdOverlay'
 
 export function App() {
   const [showAbout, setShowAbout] = useState(false)
@@ -26,7 +27,7 @@ export function App() {
     <div className="consent-backdrop">
       <div className="consent-modal">
         <h2>⚠️ Content Warning</h2>
-        <p>This app will show anything posted to Arweave—some of it may be sensitive or NSFW. You must be 18+ to continue.</p>
+        <p>This app will show anything posted to Arweave - some of it may be sensitive or NSFW. Click at your own risk! You must be 18+ to continue.</p>
         <div className="consent-actions">
           <button className="consent-btn accept" onClick={handleAccept}>I accept</button>
           <button className="consent-btn reject" onClick={handleReject}>Close app</button>
@@ -42,10 +43,20 @@ export function App() {
   // Main state
   const [currentTx, setCurrentTx] = useState<TxMeta|null>(null)
   const [loading, setLoading] = useState(false)
+  
   const [queueLoading, setQueueLoading] = useState(false)
   const [error, setError] = useState<string|null>(null)
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [ownerAddress, setOwnerAddress] = useState<string|undefined>()
+
+  const { recordClick, shouldShowAd, reset } = useAdInjector(3, 7);
+  const [showAd, setShowAd] = useState(false);
+  const handleCloseAd = () => {
+    setShowAd(false);
+    reset();
+    // after ad, go to next
+    handleNext();
+  };
 
   // Channel & time
   const [media, setMedia] = useState<Channel['media']>('image')
@@ -77,6 +88,12 @@ export function App() {
   // Next/Back handlers
   const handleNext = async ()=>{
     setError(null); setLoading(true)
+        recordClick();  // count this click
+    if (shouldShowAd) {
+      setShowAd(true);
+      setLoading(false);
+      return;
+    }
     try {
       const tx = await getNextTx(channel)
       await addHistory(tx)
@@ -107,6 +124,10 @@ export function App() {
 
   return (
     <div className="app">
+           {/* Ad overlay sits at the top */}
+     {showAd && (
+       <AdOverlay src="/assets/static-ad.jpg" onClose={handleCloseAd} />
+     )}
       <header className="app-header">
         <div className="banner">
           <img src="/assets/banner.png" alt="Roam the Permaweb Banner" />
@@ -199,10 +220,12 @@ export function App() {
           <div className="about-modal">
             <div className="modal-backdrop" onClick={() => setShowAbout(false)} />
             <div className="modal-content">
-              <h2>Ready to Roam the Permaweb?</h2>
+              <h2>Ready to Roam?</h2>
               <p>
                 This playful app lets you randomly explore Arweave content:
                 images, music, videos, websites, and even text documents.
+                <br></br>
+                <br></br>
                 Just pick a channel, choose New or Old, and click Next to
                 roam around the permaweb. Filter by creator, dive deep into
                 history, or share those hidden gems!

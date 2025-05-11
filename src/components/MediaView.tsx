@@ -1,4 +1,3 @@
-import { h } from 'preact'
 import { useState, useEffect } from 'preact/hooks'
 import type { TxMeta } from '../engine/query'
 import '../styles/media-view.css'

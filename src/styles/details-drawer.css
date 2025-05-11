@@ -26,9 +26,8 @@
     width: 100%;
     max-width: 600px;
     height: 100vh;
-    background: #1a1a1a;
+    background: #0f0121;
     color: #f0f0f0;
-    box-shadow: -6px 0 24px rgba(0, 0, 0, 0.8);
     z-index: 60;
     padding: var(--gap);
     overflow-y: auto;
@@ -101,13 +100,6 @@
     font-size: 0.875rem;
     white-space: pre-wrap;
     color: #ccc;
-  }
-  
-  /* Responsive adjustments */
-  @media (min-width: 768px) {
-    .details-drawer {
-      max-width: 50vw;
-    }
   }
   
   .more-tags {

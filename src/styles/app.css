@@ -18,6 +18,7 @@
   overflow: hidden;
   /* cap the banner height */
   max-height: 200px;
+  max-width: 420px;
 }
 
 .app-header .banner img {
@@ -50,22 +51,12 @@
   box-shadow: 0 4px 6px var(--shadow);
   cursor: pointer;
   transition: transform 0.1s ease, opacity 0.2s ease;
+  background: var(--bg-elevated, #1a1a1a);
 }
 
 .controls button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-}
-
-.controls button {
-  padding: 0.75rem 1.5rem;
-  border: none;
-  border-radius: 0.5rem;
-  font-size: 1rem;
-  font-weight: bold;
-  box-shadow: 0 4px 6px var(--shadow);
-  cursor: pointer;
-  transition: transform 0.1s ease, opacity 0.2s ease;
 }
 
 /* Consent Overlay Backdrop */
@@ -82,7 +73,7 @@
 
 /* Consent Modal Box */
 .consent-modal {
-  background: var(--bg-elevated, #111);
+  background: #0f0121;
   color: var(--text, #fff);
   padding: 2rem;
   max-width: 400px;
@@ -110,17 +101,20 @@
   cursor: pointer;
   border: 2px solid transparent;
   transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+  box-shadow: 0 4px 6px var(--shadow);
 }
 
 .consent-btn.accept {
-  background-color: var(--accent, #ff73d9);
-  color: var(--bg-elevated, #111);
+  background: linear-gradient(var(--gradient-primary));
+  color: white;
+  box-shadow: 0 4px 6px var(--shadow);
 }
 
 .consent-btn.reject {
   background: none;
   color: var(--accent, #ff73d9);
   border-color: var(--accent, #ff73d9);
+  box-shadow: 0 4px 6px var(--shadow);
 }
 
 .consent-btn:hover {
