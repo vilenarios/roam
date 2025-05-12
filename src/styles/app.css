@@ -2,7 +2,7 @@
 #app {
   max-width: 1280px;
   margin: 0 auto;
-  padding: 1.5rem;
+  padding: .5rem;
   text-align: center;
 }
 
@@ -10,7 +10,6 @@
   position: relative;
   text-align: center;
   padding: 0;
-  margin-bottom: var(--gap);
 }
 
 .app-header .banner {
@@ -39,7 +38,7 @@
   display: flex;
   justify-content: center;
   gap: var(--gap);
-  margin-bottom: 5px;
+  padding: 10px;
 }
 
 .controls button {

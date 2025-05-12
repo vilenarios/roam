@@ -1,10 +1,9 @@
 import {
   fetchTxsRange,
   getCurrentBlockHeight,
-  type Channel,
-  type TxMeta,
 } from "./query";
 import { logger } from "../utils/logger";
+import type { TxMeta, Channel } from "../constants";
 
 // Read and trim configured gateways
 const rawGateways = import.meta.env.VITE_GATEWAYS_DATA_SOURCE

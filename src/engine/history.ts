@@ -1,17 +1,7 @@
 // src/engine/history.ts
 import { set, get } from 'idb-keyval'
 import { logger } from '../utils/logger'
-import type { TxMeta } from './query'
-
-const HISTORY_KEY = 'roam-history'
-
-/**
- * Internal structure of saved history
- */
-interface HistoryState {
-  index: number
-  items: TxMeta[]
-}
+import { HISTORY_KEY, type HistoryState, type TxMeta } from '../constants'
 
 /**
  * Default empty history

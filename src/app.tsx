@@ -5,11 +5,11 @@ import { addHistory, goBack } from './engine/history'
 import { MediaView } from './components/MediaView'
 import { DetailsDrawer } from './components/DetailsDrawer'
 import { logger } from './utils/logger'
-import type { Channel, TxMeta } from './engine/query'
 import './styles/app.css'
 import './styles/channels-drawer.css'
 import { useAdInjector } from './hooks/useAdInjector'
 import { AdOverlay } from './components/AdOverlay'
+import { MAX_AD_CLICKS, MIN_AD_CLICKS, type Channel, type TxMeta } from './constants'
 
 export function App() {
   const [showAbout, setShowAbout] = useState(false)
@@ -49,13 +49,17 @@ export function App() {
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [ownerAddress, setOwnerAddress] = useState<string|undefined>()
 
-  const { recordClick, shouldShowAd, reset } = useAdInjector(3, 7);
+  const { recordClick, shouldShowAd, reset } = useAdInjector(MIN_AD_CLICKS, MAX_AD_CLICKS);
   const [showAd, setShowAd] = useState(false);
   const handleCloseAd = () => {
+    console.log("1")
     setShowAd(false);
+    console.log("2")
     reset();
     // after ad, go to next
+    console.log("3")
     handleNext();
+    console.log("4")
   };
 
   // Channel & time
@@ -138,7 +142,7 @@ export function App() {
       <div className="controls">
         <button className="btn back-btn" onClick={handleBack} disabled={!currentTx||loading}>← Back</button>
         <button className="btn channels-btn" onClick={openChannels} title="Channels">⚙️</button>
-        <button className="btn next-btn" onClick={handleNext} disabled={loading||queueLoading}>Next →</button>
+        <button className="btn next-btn" onClick={handleNext} disabled={loading||queueLoading}>Roam →</button>
       </div>
 
       {error && <div className="error">{error}</div>}

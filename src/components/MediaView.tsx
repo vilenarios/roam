@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'preact/hooks'
-import type { TxMeta } from '../engine/query'
 import '../styles/media-view.css'
 import { GATEWAY_DATA_SOURCE } from '../engine/fetchQueue'
+import type { TxMeta } from '../constants'
 
 // Thresholds (bytes) above which we prompt manual load
 const IMAGE_LOAD_THRESHOLD = 20 * 1024 * 1024

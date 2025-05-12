@@ -1,6 +1,7 @@
 // src/components/AdOverlay.tsx
 import { useState, useEffect } from 'preact/hooks';
 import '../styles/ad-overlay.css'; // see CSS below
+import { ADVERTIZEMENT_TIMER } from '../constants';
 
 interface AdOverlayProps {
   src: string;
@@ -8,7 +9,7 @@ interface AdOverlayProps {
 }
 
 export const AdOverlay = ({ src, onClose }: AdOverlayProps) => {
-  const [timer, setTimer] = useState(2);
+  const [timer, setTimer] = useState(ADVERTIZEMENT_TIMER);
 
   // countdown
   useEffect(() => {

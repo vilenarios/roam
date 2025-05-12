@@ -1,8 +1,8 @@
 // src/components/DetailsDrawer.tsx
 import type { JSX } from 'preact/jsx-runtime'
-import type { TxMeta } from '../engine/query'
 import '../styles/details-drawer.css'
 import { useState } from 'preact/hooks'
+import type { TxMeta } from '../constants'
 
 export interface DetailsDrawerProps {
   txMeta: TxMeta | null

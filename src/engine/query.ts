@@ -1,50 +1,5 @@
 import { logger } from '../utils/logger'
-
-// --------------------------------------------------------------------------
-// Types & Interfaces
-// --------------------------------------------------------------------------
-export type MediaType = 'image' | 'video' | 'music' | 'website' | 'text' | 'anything'
-export type Recency   = 'new' | 'old'
-export interface Channel {
-  media: MediaType
-  recency: Recency
-  ownerAddress?: string    // optional Arweave address filter
-}
-
-export interface TxMeta {
-  id: string
-  bundledIn?: { id: string }
-  owner: { address: string }
-  fee: { ar: string }
-  quantity: { ar: string }
-  tags: { name: string; value: string }[]
-  data: { size: number }
-  block: { height: number, timestamp: number }
-}
-
-// --------------------------------------------------------------------------
-// Content-Type mapping per media
-// --------------------------------------------------------------------------
-const BASE_CONTENT_TYPES: Record<Exclude<MediaType, 'anything'>, string[]> = {
-  image:   ['image/png', 'image/jpeg', 'image/webp', 'image/gif'],
-  video:   ['video/mp4', 'video/webm'],
-  music:   ['audio/mpeg','audio/mp3','audio/wav'],
-  website: ['application/x.arweave-manifest+json','text/html'],
-  text:    ['text/markdown','application/pdf'],
-}
-  
-// Build full map including "anything" as the union of all other arrays
-export const CONTENT_TYPES: Record<MediaType, string[]> = {
-  ...BASE_CONTENT_TYPES,
-  anything: Object
-    .values(BASE_CONTENT_TYPES)
-    .reduce<string[]>((acc, arr) => {
-      arr.forEach((ct) => {
-        if (!acc.includes(ct)) acc.push(ct)
-      })
-      return acc
-    }, []),
-}
+import { CONTENT_TYPES, type MediaType, type TxMeta } from '../constants'
 
 // --------------------------------------------------------------------------
 // Configuration & Constants

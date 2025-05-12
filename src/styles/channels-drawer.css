@@ -62,7 +62,21 @@
     box-shadow: 0 2px 8px rgba(141, 141, 141, 0.3);
     color: var(--fg);
   }
-  .controls .channels-btn:hover {
+
+  .controls .back-btn,
+  .controls .next-btn {
+    border: none;
+    padding: 0.5rem;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    background: var(--bg-elevated, #1a1a1a);
+    box-shadow: 0 2px 8px rgba(141, 141, 141, 0.3);
+    color: var(--fg);
+  }
+
+  .controls .channels-btn:hover,
+  .controls .back-btn:hover,
+  .controls .next-btn:hover {
     background: var(--bg-elevated-hover, #2a2a2a);
   }
   
