@@ -52,14 +52,10 @@ export function App() {
   const { recordClick, shouldShowAd, reset } = useAdInjector(MIN_AD_CLICKS, MAX_AD_CLICKS);
   const [showAd, setShowAd] = useState(false);
   const handleCloseAd = () => {
-    console.log("1")
     setShowAd(false);
-    console.log("2")
     reset();
     // after ad, go to next
-    console.log("3")
     handleNext();
-    console.log("4")
   };
 
   // Channel & time
@@ -91,8 +87,9 @@ export function App() {
 
   // Next/Back handlers
   const handleNext = async ()=>{
-    setError(null); setLoading(true)
-        recordClick();  // count this click
+    setError(null);
+    setLoading(true)
+    recordClick();  // count this click
     if (shouldShowAd) {
       setShowAd(true);
       setLoading(false);
@@ -122,7 +119,7 @@ export function App() {
   // Share
   const handleShare = async ()=>{
     if(!txUrl) return
-    if(navigator.share) await navigator.share({ title:'Roam the Permaweb', text:'Check this out!', url:txUrl})
+    if(navigator.share) await navigator.share({ title:'Woa, check this out!', text:`Check out what I found roaming the Permaweb! ${txUrl}`, url:txUrl})
     else { await navigator.clipboard.writeText(txUrl); alert('Copied!') }
   }
 
@@ -149,7 +146,7 @@ export function App() {
 
       <main className="media-container">
         {loading && <div className="loading">Loading…</div>}
-        {!currentTx&&!loading && <div className="placeholder">Tap “Next” to start roaming!</div>}
+        {!currentTx&&!loading && <div className="placeholder">Tap “Roam” to start!</div>}
         {currentTx&&!loading && <>
           <MediaView
             txMeta={currentTx}
@@ -157,8 +154,8 @@ export function App() {
             onPrivacyToggle={togglePrivacy}
           />
           <div className="media-actions">
-            <button className="btn share-btn" onClick={handleShare}>Share</button>
-            <button className="btn details-btn" onClick={()=>setDetailsOpen(true)}>Details</button>
+            <button className="btn share-btn" onClick={handleShare}>🔗 Share</button>
+            <button className="btn details-btn" onClick={()=>setDetailsOpen(true)}>📇 Details</button>
           </div>
         </>}
       </main>
@@ -214,10 +211,10 @@ export function App() {
                 setShowAbout(true)
               }}   
             > About </a>
-          <span className="footer-separator">·</span>
+          <span className="footer-separator">|</span>
           <a href="https://github.com/vilenarios/roam" target="_blank" rel="noopener noreferrer" className="footer-link">GitHub</a>
         </nav>
-      <div className="footer-copy">ⓐ {new Date().getFullYear()} Roam the Permaweb</div>
+      <div className="footer-copy">Roam v0.0.1</div>
     </footer>
       {/* About Modal */}
         {showAbout && (
