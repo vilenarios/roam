@@ -44,7 +44,7 @@ export const DetailsDrawer = ({ txMeta, open, onClose }: DetailsDrawerProps): JS
               </a>
             </dd>
 
-            <dt>Timestamp</dt>
+            <dt>When</dt>
             <dd>{new Date(block.timestamp * 1000).toLocaleString()}</dd>
 
             <dt>Block Height</dt>

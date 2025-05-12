@@ -203,3 +203,23 @@
   font-size: 1rem;
   cursor: pointer;
 }
+
+/* subtle tx/owner info under media */
+.tx-info {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin: 0rem 0 0.2rem;
+  font-size: 0.75rem;
+  color: #aaa;               /* muted gray */
+}
+
+.tx-info a {
+  color: var(--accent);      /* e.g. your highlight color */
+  text-decoration: none;
+}
+
+.tx-info a:hover {
+  text-decoration: underline;
+}

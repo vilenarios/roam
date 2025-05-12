@@ -1,6 +1,6 @@
 // src/App.tsx
 import { useState, useEffect } from 'preact/hooks'
-import { initFetchQueue, getNextTx } from './engine/fetchQueue'
+import { initFetchQueue, getNextTx, GATEWAY_DATA_SOURCE } from './engine/fetchQueue'
 import { addHistory, goBack } from './engine/history'
 import { MediaView } from './components/MediaView'
 import { DetailsDrawer } from './components/DetailsDrawer'
@@ -59,8 +59,8 @@ export function App() {
   };
 
   // Channel & time
-  const [media, setMedia] = useState<Channel['media']>('image')
-  const [recency, setRecency] = useState<Channel['recency']>('new')
+  const [media, setMedia] = useState<Channel['media']>('anything')
+  const [recency, setRecency] = useState<Channel['recency']>('old')
   const channel: Channel = { media, recency, ownerAddress }
 
   // Channels drawer
@@ -83,7 +83,14 @@ export function App() {
       .finally(()=>setQueueLoading(false))
   }, [media, recency, ownerAddress])
 
-  const txUrl = currentTx ? `https://arweave.net/${currentTx.id}` : ''
+  const txUrl = currentTx ? `${GATEWAY_DATA_SOURCE[0]}/${currentTx.id}` : ''
+  const formattedTime = currentTx
+    ? new Date(currentTx.block.timestamp * 1000).toLocaleString(undefined, {
+        year:   'numeric',
+        month:  'short',
+        day:    'numeric',
+      })
+    : ''
 
   // Next/Back handlers
   const handleNext = async ()=>{
@@ -153,6 +160,35 @@ export function App() {
             privacyOn={privacyOn}
             onPrivacyToggle={togglePrivacy}
           />
+
+          {/* —— subtle tx/owner info —— */}
+          <div className="tx-info">
+            <a
+              href={`https://viewblock.io/arweave/tx/${currentTx.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              TX: {currentTx.id.slice(0,6)}…
+            </a>
+            <span></span>
+            <a
+              href={`https://viewblock.io/arweave/address/${currentTx.owner.address}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Owner: {currentTx.owner.address.slice(0,6)}…
+            </a>
+            <span></span>
+            <a
+              className="tx-info-time"
+              href={`https://viewblock.io/arweave/block/${currentTx.block.height}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              When: {formattedTime}
+            </a>
+          </div>
+
           <div className="media-actions">
             <button className="btn share-btn" onClick={handleShare}>🔗 Share</button>
             <button className="btn details-btn" onClick={()=>setDetailsOpen(true)}>📇 Details</button>

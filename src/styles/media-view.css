@@ -27,7 +27,7 @@
   overflow-y: auto;
   max-height: 80vh;
   padding: 1rem;
-  background: #f9f9f9;
+  background: #0f0121;
   border-radius: 0.25rem;
   width: 100%;
   box-sizing: border-box;
@@ -108,9 +108,8 @@
     width: 90%;
     max-width: 800px;       /* cap on desktop */
     margin: 0 auto;
-    padding: var(--gap);
     overflow-y: auto;
-    padding-bottom: 1rem;
+    padding-bottom: 0.5rem;
   }
   
   /* Caps media height so details toggle and controls stay visible */

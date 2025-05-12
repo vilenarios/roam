@@ -17,22 +17,39 @@ const fallbackGateway = rawGateways[1] || rawGateways[0] || "https://arweave.net
 // Build GATEWAY_DATA_SOURCE array with 'self' mapping logic
 export const GATEWAY_DATA_SOURCE: string[] = rawGateways
   .map((gw: string) => {
-    if (gw === "self") {
-      const host = window.location.hostname.toLowerCase();
-      // If running on localhost or on an .ar.io domain, use fallback
-      if (
-        host === "localhost" ||
-        host === "127.0.0.1" ||
-        host.endsWith(".ar.io")
-      ) {
-        return fallbackGateway;
-      }
-      // Otherwise use the current origin
-      return window.location.origin;
+    if (gw !== "self") {
+      return gw;
     }
-    return gw;
+
+    // “self” → derive from window.location
+    const { protocol, hostname, port } = window.location;
+    // e.g. hostname = "roam_vilenarios.ardrive.net"
+    // split into [ "roam_vilenarios", "ardrive", "net" ]
+    const parts = hostname.toLowerCase().split(".");
+
+    // if localhost or pure .ar.io, fall back
+    if (
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname.endsWith(".ar.io")
+    ) {
+      return fallbackGateway;
+    }
+
+    // drop exactly the first segment if there are >2 parts
+    let gatewayHost: string;
+    if (parts.length > 2) {
+      // ["ardrive","net"]  or ["ar","permagate","io"]
+      gatewayHost = parts.slice(1).join(".");
+    } else {
+      // e.g. ["ardrive","net"]
+      gatewayHost = hostname;
+    }
+
+    // re-build the origin, preserving port if present
+    const portSuffix = port ? `:${port}` : "";
+    return `${protocol}//${gatewayHost}${portSuffix}`;
   })
-  // Remove any empty strings
   .filter(Boolean);
 
 // Ensure we have at least one gateway
