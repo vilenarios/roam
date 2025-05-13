@@ -15,9 +15,10 @@ export interface MediaViewProps {
   onDetails?: () => void
   privacyOn: boolean
   onPrivacyToggle: () => void
+  onZoom?: (src: string) => void // new optional prop
 }
 
-export const MediaView = ({ txMeta, onDetails, privacyOn, onPrivacyToggle }: MediaViewProps) => {
+export const MediaView = ({ txMeta, onDetails, privacyOn, onPrivacyToggle, onZoom }: MediaViewProps) => {
   const { id, data: { size }, tags } = txMeta
   const contentType = tags.find(t => t.name === 'Content-Type')?.value || ''
   const directUrl = `${GATEWAY_DATA_SOURCE[0]}/${id}`
@@ -36,12 +37,9 @@ export const MediaView = ({ txMeta, onDetails, privacyOn, onPrivacyToggle }: Med
   const [textContent, setTextContent] = useState<string | null>(null)
   const [loadingText, setLoadingText] = useState(false)
   const [errorText, setErrorText] = useState<string | null>(null)
-  // Zoom state for images
-  const [zoomed, setZoomed] = useState(false)
 
   // Reset on change
   useEffect(() => {
-    setZoomed(false)
     setManualLoad(contentType.startsWith('image/') && size > IMAGE_LOAD_THRESHOLD)
     setManualLoadVideo(contentType.startsWith('video/') && size > VIDEO_LOAD_THRESHOLD)
     setManualLoadAudio(contentType.startsWith('audio/') && size > AUDIO_LOAD_THRESHOLD)
@@ -66,11 +64,6 @@ export const MediaView = ({ txMeta, onDetails, privacyOn, onPrivacyToggle }: Med
     return () => { canceled = true }
   }, [directUrl, contentType])
 
-  // Hide overlays when zoomed
-  useEffect(() => {
-    document.body.classList.toggle('zoomed-media', zoomed)
-  }, [zoomed])
-
   const renderMedia = () => {
     // Large image prompt
     if (contentType.startsWith('image/') && manualLoad) {
@@ -83,14 +76,12 @@ export const MediaView = ({ txMeta, onDetails, privacyOn, onPrivacyToggle }: Med
     // Image display
     if (contentType.startsWith('image/')) {
       return (
-        <div className={`media-element image-container ${zoomed ? 'zoomed' : ''}`}>
-          <img
-            className="media-image"
-            src={manualLoad ? undefined : directUrl}
-            alt="Roam content"
-            onClick={() => setZoomed(z => !z)}
-          />
-        </div>
+        <img
+          className="media-image"
+          src={manualLoad ? undefined : directUrl}
+          alt="Roam content"
+          onClick={() => onZoom?.(directUrl)}
+        />
       )
     }
 
@@ -137,7 +128,7 @@ export const MediaView = ({ txMeta, onDetails, privacyOn, onPrivacyToggle }: Med
     // PDF embedding
     if (contentType === 'application/pdf') {
       return (
-        <div className="media-element pdf-container">
+        <div className="media-embed-wrapper">
           <iframe className="media-pdf" src={directUrl} title="PDF Viewer" />
           <a className="open-tab-btn" href={directUrl} target="_blank" rel="noopener noreferrer">
             Open PDF in new tab
@@ -153,7 +144,7 @@ export const MediaView = ({ txMeta, onDetails, privacyOn, onPrivacyToggle }: Med
       contentType.startsWith('application/x.arweave-manifest')
     ) {
       return (
-        <div className="media-element website-container">
+        <div className="media-embed-wrapper">
           <iframe className="media-iframe" src={directUrl} sandbox="allow-scripts allow-same-origin" title="Permaweb content preview" />
           <a className="open-tab-btn" href={directUrl} target="_blank" rel="noopener noreferrer">
             Open in new tab

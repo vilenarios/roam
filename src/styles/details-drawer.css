@@ -53,7 +53,7 @@
   .details-close-btn {
     background: none;
     border: none;
-    font-size: 1.5rem;
+    font-size: 1.25rem;
     cursor: pointer;
     color: var(--accent);
   }

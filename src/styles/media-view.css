@@ -1,21 +1,4 @@
 /* src/styles/media-view.css */
-.image-container {
-  position: relative;
-}
-.image-container.zoomed {
-  position: fixed;
-  top: 0; left: 0;
-  width: 100vw; height: 100vh;
-  background: rgba(0, 0, 0, 0.9);
-  display: flex; align-items: center; justify-content: center;
-  z-index: 9999;
-}
-.image-container.zoomed .media-image {
-  max-width: 100%; max-height: 100%;
-  object-fit: contain;
-  cursor: zoom-out;
-  
-}
 .media-image {
   cursor: zoom-in;
   max-width: 100%;
@@ -33,20 +16,21 @@
   box-sizing: border-box;
 }
 
-.media-pdf, .media-iframe {
-  height: 310px;
-  border: none;
-  background-color: #0f0121;;
-  overflow-y: auto;
+.media-embed-wrapper {
+  width: 100%;
+  height: 100%;
+  display: block;
+  justify-content: center;
+  align-items: center;
   position: relative;
 }
 
-/* Hide overlay buttons when an image is zoomed */
-.zoomed-media .media-actions,
-.zoomed-media .clear-filter,
-.zoomed-media .app-footer,
-.zoomed-media .privacy-toggle-btn {
-  display: none !important;
+.media-pdf,
+.media-iframe {
+  width: 100%;
+  height: 70vh;
+  border: none;
+  background-color: #0f0121;
 }
 
 .open-tab-btn {
@@ -97,7 +81,6 @@
 
 .media-container {
   flex: 1 0 auto;
-  padding-bottom: 1rem; /* adjust to match footer height */
 }
 
 /* Parent container holding media and actions, centered and responsive */
@@ -169,9 +152,9 @@
 
   /* Audio player full-width */
   .media-audio {
-    width: 320px;
-    height: 30px;
-    align-content: center;
+    width: 100%;
+    max-width: 600px;
+    height: 40px;
   }
   
   /* Video player full-width & height-constrained */

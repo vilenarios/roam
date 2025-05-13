@@ -16,13 +16,14 @@
   width: 100%;
   overflow: hidden;
   /* cap the banner height */
-  max-height: 200px;
+  max-height: 180px;
   max-width: 420px;
+  margin-bottom: -10px;
 }
 
 .app-header .banner img {
   width: 100%;
-  height: auto;
+  height: 120px;
   object-fit: cover;
 }
 
@@ -39,6 +40,7 @@
   justify-content: center;
   gap: var(--gap);
   padding: 10px;
+  margin-bottom: 10px;
 }
 
 .controls button {
@@ -207,10 +209,10 @@
 /* subtle tx/owner info under media */
 .tx-info {
   display: flex;
-  justify-content: center;
+  justify-content: space-evenly;
   align-items: center;
-  gap: 1rem;
-  margin: 0rem 0 0.2rem;
+  margin-top: 10px;
+  margin-bottom: 10px;
   font-size: 0.75rem;
   color: #aaa;               /* muted gray */
 }

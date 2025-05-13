@@ -10,6 +10,7 @@ import './styles/channels-drawer.css'
 import { useAdInjector } from './hooks/useAdInjector'
 import { AdOverlay } from './components/AdOverlay'
 import { MAX_AD_CLICKS, MIN_AD_CLICKS, type Channel, type TxMeta } from './constants'
+import { ZoomOverlay } from './components/ZoomOverlay'
 
 export function App() {
   const [showAbout, setShowAbout] = useState(false)
@@ -43,7 +44,7 @@ export function App() {
   // Main state
   const [currentTx, setCurrentTx] = useState<TxMeta|null>(null)
   const [loading, setLoading] = useState(false)
-  
+  const [zoomSrc, setZoomSrc] = useState<string|null>(null);
   const [queueLoading, setQueueLoading] = useState(false)
   const [error, setError] = useState<string|null>(null)
   const [detailsOpen, setDetailsOpen] = useState(false)
@@ -142,6 +143,8 @@ export function App() {
         </div>
       </header>
 
+      {zoomSrc && <ZoomOverlay src={zoomSrc} onClose={() => setZoomSrc(null)} />}
+
       {/* Controls with Channels button */}
       <div className="controls">
         <button className="btn back-btn" onClick={handleBack} disabled={!currentTx||loading}>← Back</button>
@@ -159,6 +162,7 @@ export function App() {
             txMeta={currentTx}
             privacyOn={privacyOn}
             onPrivacyToggle={togglePrivacy}
+            onZoom={(src) => setZoomSrc(src)}
           />
 
           {/* —— subtle tx/owner info —— */}
@@ -185,7 +189,7 @@ export function App() {
               target="_blank"
               rel="noopener noreferrer"
             >
-              When: {formattedTime}
+              {formattedTime}
             </a>
           </div>
 
