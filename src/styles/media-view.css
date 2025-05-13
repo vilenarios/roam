@@ -33,6 +33,12 @@
   background-color: #0f0121;
 }
 
+.media-wrapper.wide {
+  max-width: none;
+  width: 100%;
+}
+
+
 .open-tab-btn {
   position: absolute;
   bottom: 0.5rem;
@@ -147,14 +153,13 @@
   }
   
   .placeholder {
-    margin-top: 1rem;
+    margin: 2rem;
   }
 
   /* Audio player full-width */
   .media-audio {
     width: 100%;
-    max-width: 600px;
-    height: 40px;
+    height: 80px;
   }
   
   /* Video player full-width & height-constrained */

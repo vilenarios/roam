@@ -1,7 +1,7 @@
 // --------------------------------------------------------------------------
 // Constants, Types & Interfaces
 // --------------------------------------------------------------------------
-export type MediaType = 'image' | 'video' | 'music' | 'website' | 'text' | 'anything'
+export type MediaType = 'image' | 'video' | 'music' | 'website' | 'text' | 'everything'
 export type Recency   = 'new' | 'old'
 export interface Channel {
   media: MediaType
@@ -31,7 +31,7 @@ export interface TxMeta {
 // --------------------------------------------------------------------------
 // Content-Type mapping per media
 // --------------------------------------------------------------------------
-const BASE_CONTENT_TYPES: Record<Exclude<MediaType, 'anything'>, string[]> = {
+const BASE_CONTENT_TYPES: Record<Exclude<MediaType, 'everything'>, string[]> = {
   image:   ['image/png', 'image/jpeg', 'image/webp', 'image/gif'],
   video:   ['video/mp4', 'video/webm'],
   music:   ['audio/mpeg','audio/mp3','audio/wav'],
@@ -39,10 +39,10 @@ const BASE_CONTENT_TYPES: Record<Exclude<MediaType, 'anything'>, string[]> = {
   text:    ['text/markdown','application/pdf'],
 }
   
-// Build full map including "anything" as the union of all other arrays
+// Build full map including "everything" as the union of all other arrays
 export const CONTENT_TYPES: Record<MediaType, string[]> = {
   ...BASE_CONTENT_TYPES,
-  anything: Object
+  everything: Object
     .values(BASE_CONTENT_TYPES)
     .reduce<string[]>((acc, arr) => {
       arr.forEach((ct) => {
@@ -53,6 +53,6 @@ export const CONTENT_TYPES: Record<MediaType, string[]> = {
 }
 
 export const HISTORY_KEY = 'roam-history'
-export const ADVERTIZEMENT_TIMER = 3
-export const MIN_AD_CLICKS = 25
-export const MAX_AD_CLICKS = 50
+export const ADVERTIZEMENT_TIMER = 5
+export const MIN_AD_CLICKS = 20
+export const MAX_AD_CLICKS = 30

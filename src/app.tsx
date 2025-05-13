@@ -60,7 +60,7 @@ export function App() {
   };
 
   // Channel & time
-  const [media, setMedia] = useState<Channel['media']>('anything')
+  const [media, setMedia] = useState<Channel['media']>('everything')
   const [recency, setRecency] = useState<Channel['recency']>('old')
   const channel: Channel = { media, recency, ownerAddress }
 
@@ -94,24 +94,28 @@ export function App() {
     : ''
 
   // Next/Back handlers
-  const handleNext = async ()=>{
+  const handleNext = async () => {
     setError(null);
-    setLoading(true)
-    recordClick();  // count this click
+    setLoading(true);
+    recordClick();
+  
     if (shouldShowAd) {
       setShowAd(true);
       setLoading(false);
       return;
     }
+  
     try {
-      const tx = await getNextTx(channel)
-      await addHistory(tx)
-      setCurrentTx(tx)
-    } catch(e) {
-      logger.error('Next failed',e)
-      setError('Failed to load next.')
-    } finally { setLoading(false) }
-  }
+      const tx = await getNextTx(channel);
+      await addHistory(tx);
+      setCurrentTx(tx);
+    } catch (e) {
+      logger.error('Next failed', e);
+      setError('Failed to load next.');
+    } finally {
+      setLoading(false);
+    }
+  };
   const handleBack = async ()=>{
     setError(null); setLoading(true)
     try {
@@ -163,6 +167,7 @@ export function App() {
             privacyOn={privacyOn}
             onPrivacyToggle={togglePrivacy}
             onZoom={(src) => setZoomSrc(src)}
+            onCorrupt={() => handleNext()} // skip corrupt tx automatically
           />
 
           {/* —— subtle tx/owner info —— */}
@@ -218,7 +223,7 @@ export function App() {
           <button className={media==='video'?'active':''} onClick={()=>{setMedia('video'); closeChannels()}}>🎬 Videos</button>
           <button className={media==='website'?'active':''} onClick={()=>{setMedia('website'); closeChannels()}}>🌐 Websites</button>
           <button className={media==='text'?'active':''} onClick={()=>{setMedia('text'); closeChannels()}}>📖 Text</button>
-          <button className={media==='anything'? 'active' : ''} onClick={()=>{setMedia('anything'); closeChannels()}}>⚡ Anything</button>
+          <button className={media==='everything'? 'active' : ''} onClick={()=>{setMedia('everything'); closeChannels()}}>⚡ Everything</button>
         </div>
         <h3>When</h3>
         <div className="time-picker">
