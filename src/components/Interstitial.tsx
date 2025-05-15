@@ -1,14 +1,14 @@
-// src/components/AdOverlay.tsx
+// src/components/Interstitial.tsx
 import { useState, useEffect } from 'preact/hooks';
-import '../styles/ad-overlay.css'; // see CSS below
+import '../styles/Interstitial.css';
 import { ADVERTIZEMENT_TIMER } from '../constants';
 
-interface AdOverlayProps {
+interface InterstitialProps {
   src: string;
   onClose: () => void;
 }
 
-export const AdOverlay = ({ src, onClose }: AdOverlayProps) => {
+export const Interstitial = ({ src, onClose }: InterstitialProps) => {
   const [timer, setTimer] = useState(ADVERTIZEMENT_TIMER);
 
   // countdown
@@ -19,10 +19,10 @@ export const AdOverlay = ({ src, onClose }: AdOverlayProps) => {
   }, [timer]);
 
   return (
-    <div className="ad-overlay">
-      <img src={src} alt="Sponsored content" className="ad-image" />
+    <div className="interstitial-overlay">
+      <img src={src} alt="Sponsored content" className="interstitial-image" />
       <button
-        className="ad-close-btn"
+        className="interstitial-close-btn"
         disabled={timer > 0}
         onClick={onClose}
       >

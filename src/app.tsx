@@ -7,10 +7,10 @@ import { DetailsDrawer } from './components/DetailsDrawer'
 import { logger } from './utils/logger'
 import './styles/app.css'
 import './styles/channels-drawer.css'
-import { useAdInjector } from './hooks/useAdInjector'
-import { AdOverlay } from './components/AdOverlay'
+import { useInterstitialInjector } from './hooks/useInterstitialInjector'
 import { MAX_AD_CLICKS, MIN_AD_CLICKS, type Channel, type TxMeta } from './constants'
 import { ZoomOverlay } from './components/ZoomOverlay'
+import { Interstitial } from './components/Interstitial'
 
 export function App() {
   const [showAbout, setShowAbout] = useState(false)
@@ -50,10 +50,10 @@ export function App() {
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [ownerAddress, setOwnerAddress] = useState<string|undefined>()
 
-  const { recordClick, shouldShowAd, reset } = useAdInjector(MIN_AD_CLICKS, MAX_AD_CLICKS);
-  const [showAd, setShowAd] = useState(false);
+  const { recordClick, shouldShowInterstitial, reset } = useInterstitialInjector(MIN_AD_CLICKS, MAX_AD_CLICKS);
+  const [showInterstitial, setShowInterstitial] = useState(false);
   const handleCloseAd = () => {
-    setShowAd(false);
+    setShowInterstitial(false);
     reset();
     // after ad, go to next
     handleNext();
@@ -99,8 +99,8 @@ export function App() {
     setLoading(true);
     recordClick();
   
-    if (shouldShowAd) {
-      setShowAd(true);
+    if (shouldShowInterstitial) {
+      setShowInterstitial(true);
       setLoading(false);
       return;
     }
@@ -137,9 +137,9 @@ export function App() {
 
   return (
     <div className="app">
-           {/* Ad overlay sits at the top */}
-     {showAd && (
-       <AdOverlay src="/assets/static-ad.jpg" onClose={handleCloseAd} />
+           {/* Interstitial overlay sits at the top */}
+     {showInterstitial && (
+       <Interstitial src="/assets/static-ad.jpg" onClose={handleCloseAd} />
      )}
       <header className="app-header">
         <div className="banner">
@@ -259,7 +259,7 @@ export function App() {
           <span className="footer-separator">|</span>
           <a href="https://github.com/vilenarios/roam" target="_blank" rel="noopener noreferrer" className="footer-link">GitHub</a>
         </nav>
-      <div className="footer-copy">Roam v0.0.1</div>
+      <div className="footer-copy">Roam v0.0.2</div>
     </footer>
       {/* About Modal */}
         {showAbout && (
