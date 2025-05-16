@@ -1,7 +1,7 @@
 // src/App.tsx
-import { useState, useEffect } from 'preact/hooks'
+import { useState, useEffect, useRef } from 'preact/hooks'
 import { initFetchQueue, getNextTx, GATEWAY_DATA_SOURCE } from './engine/fetchQueue'
-import { addHistory, goBack } from './engine/history'
+import { addHistory, goBack, goForward, peekForward, resetHistory } from './engine/history'
 import { MediaView } from './components/MediaView'
 import { DetailsDrawer } from './components/DetailsDrawer'
 import { logger } from './utils/logger'
@@ -11,8 +11,26 @@ import { useInterstitialInjector } from './hooks/useInterstitialInjector'
 import { MAX_AD_CLICKS, MIN_AD_CLICKS, type Channel, type TxMeta } from './constants'
 import { ZoomOverlay } from './components/ZoomOverlay'
 import { Interstitial } from './components/Interstitial'
+import { fetchTxMetaById } from './engine/query'
 
 export function App() {
+
+  const deepLinkParamsRef = useRef<{
+    initialTx?: TxMeta
+    minBlock?: number
+    maxBlock?: number
+  } | null>(null)
+  const blockRangeRef = useRef<{ min?: number; max?: number } | null>(null);
+  
+  // Add at the top of your component
+  const [initialParams, setInitialParams] = useState<{
+    txid?: string
+    channel?: Channel['media']
+    ownerFilter?: boolean
+    minBlock?: number
+    maxBlock?: number
+  } | null>(null)
+
   const [showAbout, setShowAbout] = useState(false)
 
   // Consent state
@@ -69,19 +87,92 @@ export function App() {
   const openChannels = () => setShowChannels(true)
   const closeChannels = () => setShowChannels(false)
 
+  // get deep link params
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const txid = params.get('txid') || undefined
+    const channel = (params.get('channel') as Channel['media']) || undefined
+    const ownerFilter = params.get('owner') === 'true'
+    const minBlock = params.get('minBlock') ? parseInt(params.get('minBlock')!, 10) : undefined
+    const maxBlock = params.get('maxBlock') ? parseInt(params.get('maxBlock')!, 10) : undefined
+  
+    setInitialParams({ txid, channel, ownerFilter, minBlock, maxBlock })
+  }, [])
+
+  // query for any initial params
+  useEffect(() => {
+    if (!initialParams || !initialParams.txid) return;
+
+    (async () => {
+      try {
+        setLoading(true)
+        const tx = await fetchTxMetaById(initialParams.txid!)
+
+        // Set filters from URL
+        if (initialParams.channel) setMedia(initialParams.channel)
+        if (initialParams.ownerFilter) setOwnerAddress(tx.owner.address)
+
+        // Pass deep link config to initFetchQueue later
+        deepLinkParamsRef.current = {
+          initialTx: tx,
+          minBlock: initialParams.minBlock,
+          maxBlock: initialParams.maxBlock
+        }
+
+        setCurrentTx(tx)
+        await addHistory(tx)
+
+        logger.info('Loaded deep-linked TX', tx.id)
+      } catch (e) {
+        logger.error('Failed to load deep link tx', e)
+        setError('Invalid or missing TX')
+      } finally {
+        setLoading(false)
+      }
+    })()
+  }, [initialParams])
+  
+  // clear params in url after
+  useEffect(() => {
+    if (initialParams?.txid) {
+      const url = new URL(window.location.href)
+      url.search = ''
+      window.history.replaceState({}, '', url.toString())
+    }
+  }, [initialParams])
+  
   // lock scroll when drawers open
   useEffect(() => {
     document.body.classList.toggle('drawer-open', detailsOpen||showChannels)
   }, [detailsOpen, showChannels])
 
-  // fetch queue on channel change
+  // fetch queue on channel change or deep link
   useEffect(() => {
-    setQueueLoading(true)
-    setCurrentTx(null)
-    initFetchQueue(channel)
-      .then(()=>logger.info('Fetch queue initialized'))
-      .catch(e=>{ logger.error('Init failed',e); setError('Init error') })
-      .finally(()=>setQueueLoading(false))
+    const run = async () => {
+      try {
+        setQueueLoading(true)
+        setCurrentTx(null)
+  
+        // http://localhost:5173/?txid=2BsdYi2h_QW3DaCTo_DIB9ial6lgh-lzo-riyuauw9A&channel=everything&minBlock=842020&maxBlock=842119
+        console.log (" DEEP LINKS! ", deepLinkParamsRef)
+        console.log ("BLOCK REF: ", blockRangeRef)
+        const result = await initFetchQueue(channel, { ...deepLinkParamsRef.current, initialTx: currentTx ?? undefined});
+  
+        // ✅ Always update blockRangeRef, even if options are undefined
+        if (result) blockRangeRef.current = result;
+
+        // Clear after use to avoid re-use
+        // deepLinkParamsRef.current = null
+  
+        logger.info('Fetch queue initialized')
+      } catch (e) {
+        logger.error('Init failed', e)
+        setError('Init error')
+      } finally {
+        setQueueLoading(false)
+      }
+    }
+    run()
   }, [media, recency, ownerAddress])
 
   const txUrl = currentTx ? `${GATEWAY_DATA_SOURCE[0]}/${currentTx.id}` : ''
@@ -93,29 +184,18 @@ export function App() {
       })
     : ''
 
-  // Next/Back handlers
-  const handleNext = async () => {
-    setError(null);
-    setLoading(true);
-    recordClick();
-  
-    if (shouldShowInterstitial) {
-      setShowInterstitial(true);
-      setLoading(false);
-      return;
-    }
-  
+  // Reset/Back/Next/Roam handlers
+  const handleReset = async () => {
     try {
-      const tx = await getNextTx(channel);
-      await addHistory(tx);
-      setCurrentTx(tx);
+      await resetHistory();
+      setCurrentTx(null);
+      logger.debug('History reset');
     } catch (e) {
-      logger.error('Next failed', e);
-      setError('Failed to load next.');
-    } finally {
-      setLoading(false);
+      logger.error('Reset failed', e);
+      setError('Failed to reset history.');
     }
   };
+  
   const handleBack = async ()=>{
     setError(null); setLoading(true)
     try {
@@ -128,12 +208,88 @@ export function App() {
     } finally { setLoading(false) }
   }
 
+  const handleNext = async () => {
+    setError(null);
+    setLoading(true);
+    recordClick();
+  
+    if (shouldShowInterstitial) {
+      setShowInterstitial(true);
+      setLoading(false);
+      return;
+    }
+  
+    try {
+      const forward = await peekForward()
+      if (forward) {
+        const tx = await goForward()
+        setCurrentTx(tx!)
+        logger.debug('Next: reused forward history')
+      } else {
+        const tx = await getNextTx(channel)
+        await addHistory(tx)
+        setCurrentTx(tx)
+        logger.debug('Next: added new tx to history')
+      }
+    } catch (e) {
+      logger.error('Next failed', e)
+      setError('Failed to load next.')
+    } finally {
+      setLoading(false)
+    }
+  };
+
+  const handleRoam = async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      // deepLinkParamsRef.current = null; // 🧹 Clear any previous deep link state
+      const result = await initFetchQueue(channel)
+      if (result) blockRangeRef.current = result
+
+      const tx = await getNextTx(channel);
+      await addHistory(tx);             // new timeline
+      setCurrentTx(tx);
+    } catch (e) {
+      logger.error('Roam failed', e);
+      setError('Failed to start new roam.');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
   // Share
-  const handleShare = async ()=>{
-    if(!txUrl) return
-    if(navigator.share) await navigator.share({ title:'Woa, check this out!', text:`Check out what I found roaming the Permaweb! ${txUrl}`, url:txUrl})
-    else { await navigator.clipboard.writeText(txUrl); alert('Copied!') }
-  }
+  const handleShare = async () => {
+    if (!currentTx) return;
+  
+    const params = new URLSearchParams();
+    params.set("txid", currentTx.id);
+    params.set("channel", media);
+    if (ownerAddress === currentTx.owner.address) {
+      params.set("owner", "true");
+    }
+  
+    const min = blockRangeRef.current?.min;
+    const max = blockRangeRef.current?.max;
+    if (min && max) {
+      params.set("minBlock", String(min));
+      params.set("maxBlock", String(max));
+    }
+  
+    const shareUrl = `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+  
+    if (navigator.share) {
+      await navigator.share({
+        title: "Woa, check this out!",
+        text: `Check out what I found roaming the Permaweb! ${shareUrl}`,
+        url: shareUrl,
+      });
+    } else {
+      await navigator.clipboard.writeText(shareUrl);
+      alert("Copied!");
+    }
+  };
+  
 
   return (
     <div className="app">
@@ -151,16 +307,18 @@ export function App() {
 
       {/* Controls with Channels button */}
       <div className="controls">
+        <button className="btn reset-btn" onClick={handleReset} disabled={loading}>🔄 Reset</button>
         <button className="btn back-btn" onClick={handleBack} disabled={!currentTx||loading}>← Back</button>
         <button className="btn channels-btn" onClick={openChannels} title="Channels">⚙️</button>
-        <button className="btn next-btn" onClick={handleNext} disabled={loading||queueLoading}>Roam →</button>
+        <button className="btn next-btn" onClick={handleNext} disabled={loading||queueLoading}>Next →</button>
+        <button className="btn roam-btn" onClick={handleRoam} disabled={loading || queueLoading}>Roam 🎲</button>
       </div>
 
       {error && <div className="error">{error}</div>}
 
       <main className="media-container">
         {loading && <div className="loading">Loading…</div>}
-        {!currentTx&&!loading && <div className="placeholder">Tap “Roam” to start!</div>}
+        {!currentTx&&!loading && <div className="placeholder">Feeling curious? Tap “Next” to explore — or “Roam” to spin the dice.</div>}
         {currentTx&&!loading && <>
           <MediaView
             txMeta={currentTx}

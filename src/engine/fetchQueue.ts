@@ -1,18 +1,16 @@
-import {
-  fetchTxsRange,
-  getCurrentBlockHeight,
-} from "./query";
+import { fetchTxsRange, getCurrentBlockHeight } from "./query";
 import { logger } from "../utils/logger";
 import type { TxMeta, Channel } from "../constants";
 
 // Read and trim configured gateways
-const rawGateways = import.meta.env.VITE_GATEWAYS_DATA_SOURCE
-  ?.split(",")
-  .map((s: string) => s.trim())
-  .filter(Boolean) ?? [];
+const rawGateways =
+  import.meta.env.VITE_GATEWAYS_DATA_SOURCE?.split(",")
+    .map((s: string) => s.trim())
+    .filter(Boolean) ?? [];
 
 // Determine primary and fallback gateways
-const fallbackGateway = rawGateways[1] || rawGateways[0] || "https://arweave.net";
+const fallbackGateway =
+  rawGateways[1] || rawGateways[0] || "https://arweave.net";
 
 // Build GATEWAY_DATA_SOURCE array with 'self' mapping logic
 export const GATEWAY_DATA_SOURCE: string[] = rawGateways
@@ -64,7 +62,7 @@ const MAX_WINDOW_ATTEMPTS = 3;
 /** Minimum block for "old" windows */
 const MIN_OLD_BLOCK = 500_000;
 /** Base window size (blocks) */
-const WINDOW_SIZE = 1000;
+const WINDOW_SIZE = 100;
 
 /** In-memory queue of upcoming transactions for the current channel */
 let queue: TxMeta[] = [];
@@ -149,40 +147,71 @@ async function loadTxsForWindow(
 /**
  * Initialize the fetch queue according to channel type and owner fallback
  */
-export async function initFetchQueue(channel: Channel): Promise<void> {
+export async function initFetchQueue(
+  channel: Channel,
+  options?: {
+    initialTx?: TxMeta;
+    minBlock?: number;
+    maxBlock?: number;
+  }
+): Promise<{ min: number; max: number } | undefined> {
   try {
     queue = [];
-    logger.info("Initializing fetch queue", { channel });
+    logger.info("Initializing fetch queue", { channel, options });
+
     let txs: TxMeta[] = [];
+    let min: number | undefined;
+    let max: number | undefined;
 
-    if (channel.recency === "new") {
-      txs = await loadTxsForWindow(async () => {
-        const { min, max } = await slideNewWindow(channel);
+    // ----- 🆕 Deep Link Case -----
+    if (options?.initialTx) {
+      const center = options.initialTx.block.height;
+      min = options.minBlock ?? Math.max(1, center - 10_000);
+      max = options.maxBlock ?? center + 10_000;
+      const owner = channel.ownerAddress ?? options.initialTx.owner.address;
+
+      logger.info(`Deep link window blocks ${min}-${max} for owner: ${owner}`);
+      txs = await fetchWindow(channel.media, min, max, owner);
+    }
+
+    // ----- Normal Logic: New vs Old -----
+    if (txs.length === 0) {
+      if (channel.recency === "new") {
+        const window = await slideNewWindow(channel);
+        min = window.min;
+        max = window.max;
         logger.debug(`New window blocks ${min}-${max}`);
-        return fetchWindow(channel.media, min, max, channel.ownerAddress);
-      });
-    } else {
-      txs = await loadTxsForWindow(async () => {
-        const { min, max } = await pickOldWindow();
+        txs = await fetchWindow(channel.media, min, max, channel.ownerAddress);
+      } else {
+        const window = await pickOldWindow();
+        min = window.min;
+        max = window.max;
         logger.debug(`Old window blocks ${min}-${max}`);
-        return fetchWindow(channel.media, min, max, channel.ownerAddress);
-      });
+        txs = await fetchWindow(channel.media, min, max, channel.ownerAddress);
+      }
     }
 
-    // If still empty and owner filter active, expand to full history
+    // ----- Owner Fallback -----
     if (txs.length === 0 && channel.ownerAddress) {
-      logger.warn(
-        "No results for owner-filtered window; expanding to full history"
-      );
-      const current = await getCurrentBlockHeight(GATEWAY_DATA_SOURCE[0]);
-      txs = await fetchWindow(channel.media, 1, current, channel.ownerAddress);
+      min = 1;
+      max = await getCurrentBlockHeight(GATEWAY_DATA_SOURCE[0]);
+      logger.warn(`Fallback: full history from ${min}-${max}`);
+      txs = await fetchWindow(channel.media, min, max, channel.ownerAddress);
     }
 
-    // Filter out already seen
+    // ----- Finalize Queue -----
     const newTxs = txs.filter((tx) => !seenIds.has(tx.id));
     newTxs.forEach((tx) => seenIds.add(tx.id));
     queue = newTxs;
+
     logger.info(`Queue loaded with ${queue.length} new transactions`);
+
+    // Return block range used
+    if (typeof min === "number" && typeof max === "number") {
+      return { min, max };
+    }
+
+    return undefined;
   } catch (err) {
     logger.error("Failed to initialize fetch queue", err);
     throw err;

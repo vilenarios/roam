@@ -63,8 +63,10 @@
     color: var(--fg);
   }
 
+  .controls .reset-btn,
   .controls .back-btn,
-  .controls .next-btn {
+  .controls .next-btn,
+  .controls .roam-btn {
     border: none;
     padding: 0.5rem;
     border-radius: 0.5rem;
