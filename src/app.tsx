@@ -19,7 +19,7 @@ export function App() {
     initialTx?: TxMeta
     minBlock?: number
     maxBlock?: number
-  } | null>(null)
+  }>({});
   const blockRangeRef = useRef<{ min?: number; max?: number } | null>(null);
   
   // Add at the top of your component
@@ -152,17 +152,17 @@ export function App() {
       try {
         setQueueLoading(true)
         setCurrentTx(null)
-  
-        // http://localhost:5173/?txid=2BsdYi2h_QW3DaCTo_DIB9ial6lgh-lzo-riyuauw9A&channel=everything&minBlock=842020&maxBlock=842119
-        console.log (" DEEP LINKS! ", deepLinkParamsRef)
-        console.log ("BLOCK REF: ", blockRangeRef)
-        const result = await initFetchQueue(channel, { ...deepLinkParamsRef.current, initialTx: currentTx ?? undefined});
-  
-        // ✅ Always update blockRangeRef, even if options are undefined
-        if (result) blockRangeRef.current = result;
 
-        // Clear after use to avoid re-use
-        // deepLinkParamsRef.current = null
+        // ✂️ Pull options out of the ref (if any) and then clear it
+        const opts = { ...deepLinkParamsRef.current };
+        deepLinkParamsRef.current = {};  
+  
+        // example everything link 
+        // http://localhost:5173/?txid=2BsdYi2h_QW3DaCTo_DIB9ial6lgh-lzo-riyuauw9A&channel=everything&minBlock=842020&maxBlock=842119
+        // Pass opts into initFetchQueue; if opts.initialTx is undefined,
+        // it just does the normal new/old logic
+        const result = await initFetchQueue(channel, opts);
+        if (result) blockRangeRef.current = result;
   
         logger.info('Fetch queue initialized')
       } catch (e) {
@@ -243,12 +243,17 @@ export function App() {
     setError(null);
     setLoading(true);
     try {
-      // deepLinkParamsRef.current = null; // 🧹 Clear any previous deep link state
-      const result = await initFetchQueue(channel)
-      if (result) blockRangeRef.current = result
+        // 1) reset URL logic + history
+      deepLinkParamsRef.current = {};
+      setCurrentTx(null);
 
+      // 2) init a brand-new queue
+      const range = await initFetchQueue(channel);
+      if (range) blockRangeRef.current = range;
+
+      // 3) grab and show the very first tx
       const tx = await getNextTx(channel);
-      await addHistory(tx);             // new timeline
+      await addHistory(tx);
       setCurrentTx(tx);
     } catch (e) {
       logger.error('Roam failed', e);
