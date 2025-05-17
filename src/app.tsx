@@ -8,28 +8,84 @@ import { logger } from './utils/logger'
 import './styles/app.css'
 import './styles/channels-drawer.css'
 import { useInterstitialInjector } from './hooks/useInterstitialInjector'
-import { MAX_AD_CLICKS, MIN_AD_CLICKS, type Channel, type TxMeta } from './constants'
+import { MAX_AD_CLICKS, MEDIA_TYPES, MIN_AD_CLICKS, type Channel, type MediaType, type TxMeta } from './constants'
 import { ZoomOverlay } from './components/ZoomOverlay'
 import { Interstitial } from './components/Interstitial'
 import { fetchTxMetaById } from './engine/query'
 
 export function App() {
-
-  const deepLinkParamsRef = useRef<{
-    initialTx?: TxMeta
-    minBlock?: number
-    maxBlock?: number
-  }>({});
   const blockRangeRef = useRef<{ min?: number; max?: number } | null>(null);
-  
-  // Add at the top of your component
-  const [initialParams, setInitialParams] = useState<{
-    txid?: string
-    channel?: Channel['media']
-    ownerFilter?: boolean
-    minBlock?: number
-    maxBlock?: number
-  } | null>(null)
+
+  // at top of your component
+  type DeepLinkOpts = {
+    initialTx?: TxMeta;
+    minBlock?: number;
+    maxBlock?: number;
+    channel?: Channel;
+    ownerAddress?: string;
+  };
+
+  const [deepLinkOpts, setDeepLinkOpts] = useState<DeepLinkOpts| null>(null);
+  const [deepLinkParsed, setDeepLinkParsed] = useState(false);
+  const [ownerAddress, setOwnerAddress] = useState<string|undefined>()
+
+// run once on mount
+useEffect(() => {
+  let isMounted = true;
+  const params = new URLSearchParams(window.location.search);
+
+  (async () => {
+    const opts: DeepLinkOpts = {};
+
+    // 1) txid → fetch immediately
+    if (params.has('txid')) {
+      const txid = params.get('txid')!;
+      opts.initialTx = await fetchTxMetaById(txid);
+    }
+
+    // 2) ownerAddress → read but only set state if present
+    if (params.has('ownerAddress')) {
+      const addr = params.get('ownerAddress')!;
+      opts.ownerAddress = addr;
+      if (isMounted) setOwnerAddress(addr);
+    }
+
+    // 3) minBlock / maxBlock → read into opts
+    if (params.has('minBlock')) {
+      opts.minBlock = Number(params.get('minBlock'));
+    }
+    if (params.has('maxBlock')) {
+      opts.maxBlock = Number(params.get('maxBlock'));
+    }
+
+    // 4) channel → only parse media, use existing recency state
+    if (params.has('channel')) {
+      const rawMedia = params.get('channel')!;
+      if (MEDIA_TYPES.includes(rawMedia as MediaType)) {
+        opts.channel = {
+          media: rawMedia as MediaType,
+          recency,                // keep whatever your UI had selected
+          ownerAddress: undefined // owner comes from opts.ownerAddress
+        };
+        if (isMounted) setMedia(rawMedia as MediaType);
+      } else {
+        console.warn('Ignoring invalid channel media:', rawMedia);
+      }
+    }
+
+    // stash whatever we found
+    if (isMounted) setDeepLinkOpts(opts);
+    logger.debug(`Got Deeplink opts: `, opts)
+
+    // clear the URL so we don’t re-parse on every render
+    window.history.replaceState({}, '', window.location.pathname + window.location.hash);
+
+    // signal “parsing done” so your initEffect can run
+    if (isMounted) setDeepLinkParsed(true);
+  })();
+
+  return () => { isMounted = false; };
+}, []); // only on mount
 
   const [showAbout, setShowAbout] = useState(false)
 
@@ -66,9 +122,8 @@ export function App() {
   const [queueLoading, setQueueLoading] = useState(false)
   const [error, setError] = useState<string|null>(null)
   const [detailsOpen, setDetailsOpen] = useState(false)
-  const [ownerAddress, setOwnerAddress] = useState<string|undefined>()
 
-  const { recordClick, shouldShowInterstitial, reset } = useInterstitialInjector(MIN_AD_CLICKS, MAX_AD_CLICKS);
+  const {recordClick, shouldShowInterstitial, reset} = useInterstitialInjector(MIN_AD_CLICKS, MAX_AD_CLICKS);
   const [showInterstitial, setShowInterstitial] = useState(false);
   const handleCloseAd = () => {
     setShowInterstitial(false);
@@ -86,94 +141,58 @@ export function App() {
   const [showChannels, setShowChannels] = useState(false)
   const openChannels = () => setShowChannels(true)
   const closeChannels = () => setShowChannels(false)
-
-  // get deep link params
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const txid = params.get('txid') || undefined
-    const channel = (params.get('channel') as Channel['media']) || undefined
-    const ownerFilter = params.get('owner') === 'true'
-    const minBlock = params.get('minBlock') ? parseInt(params.get('minBlock')!, 10) : undefined
-    const maxBlock = params.get('maxBlock') ? parseInt(params.get('maxBlock')!, 10) : undefined
-  
-    setInitialParams({ txid, channel, ownerFilter, minBlock, maxBlock })
-  }, [])
-
-  // query for any initial params
-  useEffect(() => {
-    if (!initialParams || !initialParams.txid) return;
-
-    (async () => {
-      try {
-        setLoading(true)
-        const tx = await fetchTxMetaById(initialParams.txid!)
-
-        // Set filters from URL
-        if (initialParams.channel) setMedia(initialParams.channel)
-        if (initialParams.ownerFilter) setOwnerAddress(tx.owner.address)
-
-        // Pass deep link config to initFetchQueue later
-        deepLinkParamsRef.current = {
-          initialTx: tx,
-          minBlock: initialParams.minBlock,
-          maxBlock: initialParams.maxBlock
-        }
-
-        setCurrentTx(tx)
-        await addHistory(tx)
-
-        logger.info('Loaded deep-linked TX', tx.id)
-      } catch (e) {
-        logger.error('Failed to load deep link tx', e)
-        setError('Invalid or missing TX')
-      } finally {
-        setLoading(false)
-      }
-    })()
-  }, [initialParams])
-  
-  // clear params in url after
-  useEffect(() => {
-    if (initialParams?.txid) {
-      const url = new URL(window.location.href)
-      url.search = ''
-      window.history.replaceState({}, '', url.toString())
-    }
-  }, [initialParams])
   
   // lock scroll when drawers open
   useEffect(() => {
     document.body.classList.toggle('drawer-open', detailsOpen||showChannels)
   }, [detailsOpen, showChannels])
 
-  // fetch queue on channel change or deep link
+  // when filters change **and** after deep-link has parsed, fire exactly one init
   useEffect(() => {
-    const run = async () => {
-      try {
-        setQueueLoading(true)
-        setCurrentTx(null)
+    if (!deepLinkParsed) return;
 
-        // ✂️ Pull options out of the ref (if any) and then clear it
-        const opts = { ...deepLinkParamsRef.current };
-        deepLinkParamsRef.current = {};  
-  
-        // example everything link 
-        // http://localhost:5173/?txid=2BsdYi2h_QW3DaCTo_DIB9ial6lgh-lzo-riyuauw9A&channel=everything&minBlock=842020&maxBlock=842119
-        // Pass opts into initFetchQueue; if opts.initialTx is undefined,
-        // it just does the normal new/old logic
-        const result = await initFetchQueue(channel, opts);
-        if (result) blockRangeRef.current = result;
-  
-        logger.info('Fetch queue initialized')
-      } catch (e) {
-        logger.error('Init failed', e)
-        setError('Init error')
-      } finally {
-        setQueueLoading(false)
+    let cancelled = false;
+    (async () => {
+      setQueueLoading(true);
+      setCurrentTx(null);
+      setError(null);
+
+      // choose which opts to pass:
+      const opts = deepLinkOpts
+        ? {
+            initialTx: deepLinkOpts.initialTx,
+            minBlock: deepLinkOpts.minBlock,
+            maxBlock: deepLinkOpts.maxBlock,
+            ownerAddress: deepLinkOpts.ownerAddress,
+          }
+        : {};
+
+      const range = await initFetchQueue(channel, opts as any);
+      if (!cancelled && range) {
+        // you can store this in state, too, if you want to display it
+        blockRangeRef.current = range;
       }
-    }
-    run()
-  }, [media, recency, ownerAddress])
+
+      const firstTx = opts.initialTx ?? await getNextTx(channel);
+      if (!cancelled) {
+        setCurrentTx(firstTx);
+        await addHistory(firstTx);
+      }
+    })()
+      .catch(e => {
+        if (!cancelled) {
+          logger.error('Init failed', e);
+          setError('Couldn’t load content');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setQueueLoading(false);
+      });
+
+    return () => { cancelled = true };
+  }, [media, recency, deepLinkParsed]);
+  
+  // http://localhost:5173/?txid=2BsdYi2h_QW3DaCTo_DIB9ial6lgh-lzo-riyuauw9A&channel=everything&minBlock=842020&maxBlock=842119
 
   const txUrl = currentTx ? `${GATEWAY_DATA_SOURCE[0]}/${currentTx.id}` : ''
   const formattedTime = currentTx
@@ -244,7 +263,6 @@ export function App() {
     setLoading(true);
     try {
         // 1) reset URL logic + history
-      deepLinkParamsRef.current = {};
       setCurrentTx(null);
 
       // 2) init a brand-new queue
@@ -270,13 +288,16 @@ export function App() {
     const params = new URLSearchParams();
     params.set("txid", currentTx.id);
     params.set("channel", media);
-    if (ownerAddress === currentTx.owner.address) {
-      params.set("owner", "true");
+  
+    // if you have an explicit ownerAddress filter, include it
+    if (ownerAddress) {
+      params.set("ownerAddress", ownerAddress);
     }
   
+    // explicitly check for undefined, not falsy
     const min = blockRangeRef.current?.min;
     const max = blockRangeRef.current?.max;
-    if (min && max) {
+    if (min !== undefined && max !== undefined) {
       params.set("minBlock", String(min));
       params.set("maxBlock", String(max));
     }
@@ -381,10 +402,10 @@ export function App() {
         <button className="drawer-close" onClick={closeChannels}>✖️</button>
         <h2>Channels</h2>
         <div className="channel-picker">
-          <button className={media==='image'?'active':''} onClick={()=>{setMedia('image'); closeChannels()}}>🖼 Images</button>
+          <button className={media==='images'?'active':''} onClick={()=>{setMedia('images'); closeChannels()}}>🖼 Images</button>
           <button className={media==='music'?'active':''} onClick={()=>{setMedia('music'); closeChannels()}}>🎵 Music</button>
-          <button className={media==='video'?'active':''} onClick={()=>{setMedia('video'); closeChannels()}}>🎬 Videos</button>
-          <button className={media==='website'?'active':''} onClick={()=>{setMedia('website'); closeChannels()}}>🌐 Websites</button>
+          <button className={media==='videos'?'active':''} onClick={()=>{setMedia('videos'); closeChannels()}}>🎬 Videos</button>
+          <button className={media==='websites'?'active':''} onClick={()=>{setMedia('websites'); closeChannels()}}>🌐 Websites</button>
           <button className={media==='text'?'active':''} onClick={()=>{setMedia('text'); closeChannels()}}>📖 Text</button>
           <button className={media==='everything'? 'active' : ''} onClick={()=>{setMedia('everything'); closeChannels()}}>⚡ Everything</button>
         </div>

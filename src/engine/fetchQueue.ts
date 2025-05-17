@@ -1,6 +1,6 @@
 import { fetchTxsRange, getCurrentBlockHeight } from "./query";
 import { logger } from "../utils/logger";
-import type { TxMeta, Channel } from "../constants";
+import { type TxMeta, type Channel, MIN_OLD_BLOCK } from "../constants";
 
 // Read and trim configured gateways
 const rawGateways =
@@ -59,8 +59,7 @@ if (GATEWAY_DATA_SOURCE.length === 0) {
 const REFILL_THRESHOLD = 5;
 /** Maximum attempts to find a non-empty window */
 const MAX_WINDOW_ATTEMPTS = 3;
-/** Minimum block for "old" windows */
-const MIN_OLD_BLOCK = 500_000;
+
 /** Base window size (blocks) */
 const WINDOW_SIZE = 100;
 
@@ -149,49 +148,60 @@ async function loadTxsForWindow(
  */
 export async function initFetchQueue(
   channel: Channel,
-  options?: {
+  options: {
     initialTx?: TxMeta;
     minBlock?: number;
     maxBlock?: number;
-  }
+    ownerAddress?: string;
+  } = {}
 ): Promise<{ min: number; max: number } | undefined> {
   try {
     queue = [];
     logger.info("Initializing fetch queue", { channel, options });
 
     let txs: TxMeta[] = [];
-    let min: number | undefined;
-    let max: number | undefined;
+    let min: number;
+    let max: number;
 
-    // ----- 🆕 Deep Link Case -----
-    if (options?.initialTx) {
+    // 1) Deep-link by txId (highest priority)
+    if (options.initialTx) {
       const center = options.initialTx.block.height;
       min = options.minBlock ?? Math.max(1, center - 10_000);
       max = options.maxBlock ?? center + 10_000;
-      const owner = channel.ownerAddress ?? options.initialTx.owner.address;
+      const owner = options.ownerAddress ?? options.initialTx.owner.address;
 
       logger.info(`Deep link window blocks ${min}-${max} for owner: ${owner}`);
       txs = await fetchWindow(channel.media, min, max, owner);
-    }
 
-    // ----- Normal Logic: New vs Old -----
-    if (txs.length === 0) {
+      // 2) Deep-link by explicit block window (no txId)
+    } else if (options.minBlock != null && options.maxBlock != null) {
+      min = options.minBlock;
+      max = options.maxBlock;
+      // use the explicit ownerAddress filter if provided, otherwise channel.ownerAddress
+      const owner = options.ownerAddress ?? channel.ownerAddress;
+
+      logger.info(
+        `Deep link explicit blocks ${min}-${max} for owner: ${owner}`
+      );
+      txs = await fetchWindow(channel.media, min, max, owner);
+
+      // 3) Normal “new” vs “old” bucket logic
+    } else {
       if (channel.recency === "new") {
         const window = await slideNewWindow(channel);
         min = window.min;
         max = window.max;
         logger.debug(`New window blocks ${min}-${max}`);
-        txs = await fetchWindow(channel.media, min, max, channel.ownerAddress);
       } else {
         const window = await pickOldWindow();
         min = window.min;
         max = window.max;
         logger.debug(`Old window blocks ${min}-${max}`);
-        txs = await fetchWindow(channel.media, min, max, channel.ownerAddress);
       }
+      txs = await fetchWindow(channel.media, min, max, channel.ownerAddress);
     }
 
-    // ----- Owner Fallback -----
+    // 4) Owner‐only fallback if nothing found
     if (txs.length === 0 && channel.ownerAddress) {
       min = 1;
       max = await getCurrentBlockHeight(GATEWAY_DATA_SOURCE[0]);
@@ -199,19 +209,16 @@ export async function initFetchQueue(
       txs = await fetchWindow(channel.media, min, max, channel.ownerAddress);
     }
 
-    // ----- Finalize Queue -----
+    // 5) Dedupe & enqueue
     const newTxs = txs.filter((tx) => !seenIds.has(tx.id));
     newTxs.forEach((tx) => seenIds.add(tx.id));
     queue = newTxs;
-
     logger.info(`Queue loaded with ${queue.length} new transactions`);
 
-    // Return block range used
-    if (typeof min === "number" && typeof max === "number") {
-      return { min, max };
-    }
-
-    return undefined;
+    // 6) Return the actual block‐range used
+    return typeof min === "number" && typeof max === "number"
+      ? { min, max }
+      : undefined;
   } catch (err) {
     logger.error("Failed to initialize fetch queue", err);
     throw err;
