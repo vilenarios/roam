@@ -202,7 +202,7 @@ useEffect(() => {
       });
 
     return () => { cancelled = true };
-  }, [media, recency, deepLinkParsed]);
+  }, [media, recency, ownerAddress, deepLinkParsed]);
   
   const txUrl = currentTx ? `${GATEWAY_DATA_SOURCE[0]}/${currentTx.id}` : ''
   console.log ("TX URL: ", txUrl)
