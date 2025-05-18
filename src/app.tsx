@@ -204,8 +204,6 @@ useEffect(() => {
     return () => { cancelled = true };
   }, [media, recency, deepLinkParsed]);
   
-  // http://localhost:5173/?txid=2BsdYi2h_QW3DaCTo_DIB9ial6lgh-lzo-riyuauw9A&channel=everything&minBlock=842020&maxBlock=842119
-
   const txUrl = currentTx ? `${GATEWAY_DATA_SOURCE[0]}/${currentTx.id}` : ''
   console.log ("TX URL: ", txUrl)
   const formattedTime = currentTx
@@ -257,18 +255,18 @@ useEffect(() => {
         const tx = await goForward();
         if (tx) {
           setCurrentTx(tx);
-          logger.debug('Next: reused forward history');
+          // logger.debug('Next: reused forward history');
         } else {
           setError('Unexpected missing forward history.');
         }
       } else {
               const tx = await getNextTx(channel);
               if (!tx) {
-                logger.debug("No more content in this channel.");
+                // logger.debug("No more content in this channel.");
               } else {
                 await addHistory(tx);
                 setCurrentTx(tx);
-                logger.debug('Next: added new tx to history');
+                // logger.debug('Next: added new tx to history');
               }
       }
     } catch (e) {

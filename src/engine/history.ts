@@ -58,7 +58,7 @@ export async function addHistory(tx: TxMeta): Promise<void> {
   const newIndex = items.length - 1;
   const newState: HistoryState = { index: newIndex, items };
   await saveHistory(newState);
-  logger.debug("History added", { index: newIndex, id: tx.id });
+  // logger.debug("History added", { index: newIndex, id: tx.id });
 }
 
 /**

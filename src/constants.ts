@@ -72,3 +72,5 @@ export const MAX_AD_CLICKS = 50;
 /** Minimum block for "old" windows */
 export const MIN_OLD_BLOCK = 100_000;
 export const MAX_RETRY_ATTEMPTS = 8;
+/** Base window size (blocks) */
+export const WINDOW_SIZE = 120;

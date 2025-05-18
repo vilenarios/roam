@@ -5,6 +5,7 @@ import {
   type Channel,
   MIN_OLD_BLOCK,
   MAX_RETRY_ATTEMPTS,
+  WINDOW_SIZE,
 } from "../constants";
 
 // Read and trim configured gateways
@@ -62,12 +63,6 @@ if (GATEWAY_DATA_SOURCE.length === 0) {
 
 /** How many items left in the queue before triggering a background refill */
 const REFILL_THRESHOLD = 3;
-
-/** Maximum attempts to find a non-empty window */
-//const MAX_WINDOW_ATTEMPTS = 3;
-
-/** Base window size (blocks) */
-const WINDOW_SIZE = 100;
 
 /** In-memory queue of upcoming transactions for the current channel */
 let queue: TxMeta[] = [];
@@ -161,13 +156,25 @@ export async function initFetchQueue(
       logger.info(`Deep link window blocks ${min}-${max} for owner: ${owner}`);
       txs = await fetchWindow(channel.media, min, max, owner);
 
-      // 2) Deep-link by explicit block window
+      // 2) Deep-link by explicit block range breaking into a window subset
     } else if (options.minBlock != null && options.maxBlock != null) {
-      min = options.minBlock;
-      max = options.maxBlock;
+      const rangeMin = options.minBlock;
+      const rangeMax = options.maxBlock;
+      const windowSize = WINDOW_SIZE;
+
+      if (rangeMax - rangeMin + 1 <= windowSize) {
+        min = rangeMin;
+        max = rangeMax;
+      } else {
+        const start =
+          Math.floor(Math.random() * (rangeMax - rangeMin - windowSize + 2)) +
+          rangeMin;
+        min = start;
+        max = start + windowSize - 1;
+      }
       const owner = options.ownerAddress ?? channel.ownerAddress;
       logger.info(
-        `Deep link explicit blocks ${min}-${max} for owner: ${owner}`
+        `Deep link explicit window subset blocks ${min}-${max} within ${rangeMin}-${rangeMax} for owner: ${owner}`
       );
       txs = await fetchWindow(channel.media, min, max, owner);
 
