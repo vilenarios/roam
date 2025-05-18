@@ -132,7 +132,7 @@ useEffect(() => {
   };
 
   // Channel & time
-  const [media, setMedia] = useState<Channel['media']>('everything')
+  const [media, setMedia] = useState<Channel['media']>('images')
   const [recency, setRecency] = useState<Channel['recency']>('old')
   const channel: Channel = { media, recency, ownerAddress }
 
