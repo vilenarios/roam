@@ -149,6 +149,8 @@ export async function initFetchQueue(
 
     // 1) Deep-link by txId
     if (options.initialTx) {
+      seenIds.add(options.initialTx.id);
+
       const center = options.initialTx.block.height;
       min = options.minBlock ?? Math.max(1, center - WINDOW_SIZE);
       max = options.maxBlock ?? center + WINDOW_SIZE;

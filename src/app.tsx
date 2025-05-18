@@ -29,62 +29,62 @@ export function App() {
   const [deepLinkParsed, setDeepLinkParsed] = useState(false);
   const [ownerAddress, setOwnerAddress] = useState<string|undefined>()
 
-// run once on mount
-useEffect(() => {
-  let isMounted = true;
-  const params = new URLSearchParams(window.location.search);
+  // run once on mount
+  useEffect(() => {
+    let isMounted = true;
+    const params = new URLSearchParams(window.location.search);
 
-  (async () => {
-    const opts: DeepLinkOpts = {};
+    (async () => {
+      const opts: DeepLinkOpts = {};
 
-    // 1) txid → fetch immediately
-    if (params.has('txid')) {
-      const txid = params.get('txid')!;
-      opts.initialTx = await fetchTxMetaById(txid);
-    }
-
-    // 2) ownerAddress → read but only set state if present
-    if (params.has('ownerAddress')) {
-      const addr = params.get('ownerAddress')!;
-      opts.ownerAddress = addr;
-      if (isMounted) setOwnerAddress(addr);
-    }
-
-    // 3) minBlock / maxBlock → read into opts
-    if (params.has('minBlock')) {
-      opts.minBlock = Number(params.get('minBlock'));
-    }
-    if (params.has('maxBlock')) {
-      opts.maxBlock = Number(params.get('maxBlock'));
-    }
-
-    // 4) channel → only parse media, use existing recency state
-    if (params.has('channel')) {
-      const rawMedia = params.get('channel')!;
-      if (MEDIA_TYPES.includes(rawMedia as MediaType)) {
-        opts.channel = {
-          media: rawMedia as MediaType,
-          recency,                // keep whatever your UI had selected
-          ownerAddress: undefined // owner comes from opts.ownerAddress
-        };
-        if (isMounted) setMedia(rawMedia as MediaType);
-      } else {
-        console.warn('Ignoring invalid channel media:', rawMedia);
+      // 1) txid → fetch immediately
+      if (params.has('txid')) {
+        const txid = params.get('txid')!;
+        opts.initialTx = await fetchTxMetaById(txid);
       }
-    }
 
-    // stash whatever we found
-    if (isMounted) setDeepLinkOpts(opts);
+      // 2) ownerAddress → read but only set state if present
+      if (params.has('ownerAddress')) {
+        const addr = params.get('ownerAddress')!;
+        opts.ownerAddress = addr;
+        if (isMounted) setOwnerAddress(addr);
+      }
 
-    // clear the URL so we don’t re-parse on every render
-    window.history.replaceState({}, '', window.location.pathname + window.location.hash);
+      // 3) minBlock / maxBlock → read into opts
+      if (params.has('minBlock')) {
+        opts.minBlock = Number(params.get('minBlock'));
+      }
+      if (params.has('maxBlock')) {
+        opts.maxBlock = Number(params.get('maxBlock'));
+      }
 
-    // signal “parsing done” so your initEffect can run
-    if (isMounted) setDeepLinkParsed(true);
-  })();
+      // 4) channel → only parse media, use existing recency state
+      if (params.has('channel')) {
+        const rawMedia = params.get('channel')!;
+        if (MEDIA_TYPES.includes(rawMedia as MediaType)) {
+          opts.channel = {
+            media: rawMedia as MediaType,
+            recency,                // keep whatever your UI had selected
+            ownerAddress: undefined // owner comes from opts.ownerAddress
+          };
+          if (isMounted) setMedia(rawMedia as MediaType);
+        } else {
+          console.warn('Ignoring invalid channel media:', rawMedia);
+        }
+      }
 
-  return () => { isMounted = false; };
-}, []); // only on mount
+      // stash whatever we found
+      if (isMounted) setDeepLinkOpts(opts);
+
+      // clear the URL so we don’t re-parse on every render
+      window.history.replaceState({}, '', window.location.pathname + window.location.hash);
+
+      // signal “parsing done” so your initEffect can run
+      if (isMounted) setDeepLinkParsed(true);
+    })();
+
+    return () => { isMounted = false; };
+  }, []); // only on mount
 
   const [showAbout, setShowAbout] = useState(false)
 
@@ -149,8 +149,8 @@ useEffect(() => {
   // when filters change **and** after deep-link has parsed, fire exactly one init
   useEffect(() => {
     if (!deepLinkParsed) return;
-
     let cancelled = false;
+
     (async () => {
       setQueueLoading(true);
       setCurrentTx(null);
