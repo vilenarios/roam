@@ -70,4 +70,5 @@ export const ADVERTIZEMENT_TIMER = 5;
 export const MIN_AD_CLICKS = 50;
 export const MAX_AD_CLICKS = 50;
 /** Minimum block for "old" windows */
-export const MIN_OLD_BLOCK = 250_000;
+export const MIN_OLD_BLOCK = 100_000;
+export const MAX_RETRY_ATTEMPTS = 8;

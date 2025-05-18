@@ -156,12 +156,12 @@ useEffect(() => {
       setCurrentTx(null);
       setError(null);
 
-      // choose which opts to pass:
-      const opts = deepLinkOpts
-        ? {
-            initialTx: deepLinkOpts.initialTx,
-            minBlock: deepLinkOpts.minBlock,
-            maxBlock: deepLinkOpts.maxBlock,
+      // Only use deepLinkOpts on first run, then clear them
+      const opts = deepLinkOpts?.initialTx || deepLinkOpts?.minBlock != null
+        ? { 
+            initialTx:   deepLinkOpts.initialTx,
+            minBlock:    deepLinkOpts.minBlock,
+            maxBlock:    deepLinkOpts.maxBlock,
             ownerAddress: deepLinkOpts.ownerAddress,
           }
         : {};
@@ -187,6 +187,9 @@ useEffect(() => {
           await addHistory(firstTx);
         }
       }
+      if (deepLinkOpts?.initialTx || deepLinkOpts?.minBlock != null) {
+          setDeepLinkOpts({ initialTx: undefined, minBlock: undefined, maxBlock: undefined, ownerAddress: undefined, channel: undefined });
+        }
     })()
       .catch(e => {
         if (!cancelled) {

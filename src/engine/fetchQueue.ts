@@ -1,6 +1,11 @@
 import { fetchTxsRange, getCurrentBlockHeight } from "./query";
 import { logger } from "../utils/logger";
-import { type TxMeta, type Channel, MIN_OLD_BLOCK } from "../constants";
+import {
+  type TxMeta,
+  type Channel,
+  MIN_OLD_BLOCK,
+  MAX_RETRY_ATTEMPTS,
+} from "../constants";
 
 // Read and trim configured gateways
 const rawGateways =
@@ -56,7 +61,7 @@ if (GATEWAY_DATA_SOURCE.length === 0) {
 }
 
 /** How many items left in the queue before triggering a background refill */
-const REFILL_THRESHOLD = 5;
+const REFILL_THRESHOLD = 3;
 
 /** Maximum attempts to find a non-empty window */
 //const MAX_WINDOW_ATTEMPTS = 3;
@@ -169,23 +174,22 @@ export async function initFetchQueue(
       // 3) Bucket mode with retries
     } else {
       const owner = channel.ownerAddress;
-      const MAX_ATTEMPTS = 3;
       let attempt = 0;
 
-      while (attempt < MAX_ATTEMPTS && txs.length === 0) {
+      while (attempt < MAX_RETRY_ATTEMPTS && txs.length === 0) {
         if (channel.recency === "new") {
           const w = await slideNewWindow(channel);
           min = w.min;
           max = w.max;
           logger.debug(
-            `Attempt ${attempt + 1}/${MAX_ATTEMPTS} — New window blocks ${min}-${max}`
+            `Attempt ${attempt + 1}/${MAX_RETRY_ATTEMPTS} — New window blocks ${min}-${max}`
           );
         } else {
           const w = await pickOldWindow();
           min = w.min;
           max = w.max;
           logger.debug(
-            `Attempt ${attempt + 1}/${MAX_ATTEMPTS} — Old window blocks ${min}-${max}`
+            `Attempt ${attempt + 1}/${MAX_RETRY_ATTEMPTS} — Old window blocks ${min}-${max}`
           );
         }
         txs = await fetchWindow(channel.media, min, max, owner);
@@ -194,7 +198,7 @@ export async function initFetchQueue(
 
       if (txs.length === 0) {
         logger.warn(
-          `No txs found after ${MAX_ATTEMPTS} ${channel.recency} window attempts`
+          `No txs found after ${MAX_RETRY_ATTEMPTS} ${channel.recency} window attempts`
         );
       }
     }
