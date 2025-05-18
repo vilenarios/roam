@@ -57,8 +57,9 @@ if (GATEWAY_DATA_SOURCE.length === 0) {
 
 /** How many items left in the queue before triggering a background refill */
 const REFILL_THRESHOLD = 5;
+
 /** Maximum attempts to find a non-empty window */
-const MAX_WINDOW_ATTEMPTS = 3;
+//const MAX_WINDOW_ATTEMPTS = 3;
 
 /** Base window size (blocks) */
 const WINDOW_SIZE = 100;
@@ -127,23 +128,6 @@ async function fetchWindow(
 }
 
 /**
- * Attempt to load transactions via loader, up to a maximum number of attempts
- */
-async function loadTxsForWindow(
-  loader: () => Promise<TxMeta[]>,
-  attempts = MAX_WINDOW_ATTEMPTS
-): Promise<TxMeta[]> {
-  let txs: TxMeta[] = [];
-  for (let i = 1; i <= attempts; i++) {
-    txs = await loader();
-    if (txs.length > 0) return txs;
-    logger.debug(`Window attempt ${i} returned no transactions`);
-  }
-  logger.warn(`All ${attempts} window attempts returned empty`);
-  return [];
-}
-
-/**
  * Initialize the fetch queue according to channel type and owner fallback
  */
 export async function initFetchQueue(
@@ -160,48 +144,62 @@ export async function initFetchQueue(
     logger.info("Initializing fetch queue", { channel, options });
 
     let txs: TxMeta[] = [];
-    let min: number;
-    let max: number;
+    let min: number = 0;
+    let max: number = 0;
 
-    // 1) Deep-link by txId (highest priority)
+    // 1) Deep-link by txId
     if (options.initialTx) {
       const center = options.initialTx.block.height;
-      min = options.minBlock ?? Math.max(1, center - 10_000);
-      max = options.maxBlock ?? center + 10_000;
+      min = options.minBlock ?? Math.max(1, center - WINDOW_SIZE);
+      max = options.maxBlock ?? center + WINDOW_SIZE;
       const owner = options.ownerAddress ?? options.initialTx.owner.address;
-
       logger.info(`Deep link window blocks ${min}-${max} for owner: ${owner}`);
       txs = await fetchWindow(channel.media, min, max, owner);
 
-      // 2) Deep-link by explicit block window (no txId)
+      // 2) Deep-link by explicit block window
     } else if (options.minBlock != null && options.maxBlock != null) {
       min = options.minBlock;
       max = options.maxBlock;
-      // use the explicit ownerAddress filter if provided, otherwise channel.ownerAddress
       const owner = options.ownerAddress ?? channel.ownerAddress;
-
       logger.info(
         `Deep link explicit blocks ${min}-${max} for owner: ${owner}`
       );
       txs = await fetchWindow(channel.media, min, max, owner);
 
-      // 3) Normal “new” vs “old” bucket logic
+      // 3) Bucket mode with retries
     } else {
-      if (channel.recency === "new") {
-        const window = await slideNewWindow(channel);
-        min = window.min;
-        max = window.max;
-        logger.debug(`New window blocks ${min}-${max}`);
-      } else {
-        const window = await pickOldWindow();
-        min = window.min;
-        max = window.max;
-        logger.debug(`Old window blocks ${min}-${max}`);
+      const owner = channel.ownerAddress;
+      const MAX_ATTEMPTS = 3;
+      let attempt = 0;
+
+      while (attempt < MAX_ATTEMPTS && txs.length === 0) {
+        if (channel.recency === "new") {
+          const w = await slideNewWindow(channel);
+          min = w.min;
+          max = w.max;
+          logger.debug(
+            `Attempt ${attempt + 1}/${MAX_ATTEMPTS} — New window blocks ${min}-${max}`
+          );
+        } else {
+          const w = await pickOldWindow();
+          min = w.min;
+          max = w.max;
+          logger.debug(
+            `Attempt ${attempt + 1}/${MAX_ATTEMPTS} — Old window blocks ${min}-${max}`
+          );
+        }
+        txs = await fetchWindow(channel.media, min, max, owner);
+        attempt++;
       }
-      txs = await fetchWindow(channel.media, min, max, channel.ownerAddress);
+
+      if (txs.length === 0) {
+        logger.warn(
+          `No txs found after ${MAX_ATTEMPTS} ${channel.recency} window attempts`
+        );
+      }
     }
 
-    // 4) Owner‐only fallback if nothing found
+    // 4) Owner-only fallback if still empty
     if (txs.length === 0 && channel.ownerAddress) {
       min = 1;
       max = await getCurrentBlockHeight(GATEWAY_DATA_SOURCE[0]);
@@ -215,10 +213,8 @@ export async function initFetchQueue(
     queue = newTxs;
     logger.info(`Queue loaded with ${queue.length} new transactions`);
 
-    // 6) Return the actual block‐range used
-    return typeof min === "number" && typeof max === "number"
-      ? { min, max }
-      : undefined;
+    // 6) Return the actual block-range used
+    return { min, max };
   } catch (err) {
     logger.error("Failed to initialize fetch queue", err);
     throw err;
@@ -228,12 +224,14 @@ export async function initFetchQueue(
 /**
  * Get next transaction or trigger background refill
  */
-export async function getNextTx(channel: Channel): Promise<TxMeta> {
+export async function getNextTx(channel: Channel): Promise<TxMeta | null> {
+  // synchronous refill if empty
   if (queue.length === 0) {
     logger.debug("Queue empty — blocking refill");
     await initFetchQueue(channel);
   }
 
+  // background refill if below threshold
   if (queue.length < REFILL_THRESHOLD && !isRefilling) {
     isRefilling = true;
     logger.debug("Queue low — background refill");
@@ -246,8 +244,8 @@ export async function getNextTx(channel: Channel): Promise<TxMeta> {
 
   const tx = queue.shift();
   if (!tx) {
-    throw new Error("Unexpected empty queue after refill");
+    logger.warn("No transactions available after refill");
+    return null;
   }
-  logger.debug("getNextTx →", tx.id);
   return tx;
 }

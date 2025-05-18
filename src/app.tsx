@@ -75,7 +75,6 @@ useEffect(() => {
 
     // stash whatever we found
     if (isMounted) setDeepLinkOpts(opts);
-    logger.debug(`Got Deeplink opts: `, opts)
 
     // clear the URL so we don’t re-parse on every render
     window.history.replaceState({}, '', window.location.pathname + window.location.hash);
@@ -173,10 +172,20 @@ useEffect(() => {
         blockRangeRef.current = range;
       }
 
-      const firstTx = opts.initialTx ?? await getNextTx(channel);
+      let firstTx: TxMeta | null = null;
+      if (opts.initialTx) {
+        firstTx = opts.initialTx;
+      } else {
+        firstTx = await getNextTx(channel);
+      }
+
       if (!cancelled) {
-        setCurrentTx(firstTx);
-        await addHistory(firstTx);
+        if (!firstTx) {
+          setError("No content found to initialize.");
+        } else {
+          setCurrentTx(firstTx);
+          await addHistory(firstTx);
+        }
       }
     })()
       .catch(e => {
@@ -195,6 +204,7 @@ useEffect(() => {
   // http://localhost:5173/?txid=2BsdYi2h_QW3DaCTo_DIB9ial6lgh-lzo-riyuauw9A&channel=everything&minBlock=842020&maxBlock=842119
 
   const txUrl = currentTx ? `${GATEWAY_DATA_SOURCE[0]}/${currentTx.id}` : ''
+  console.log ("TX URL: ", txUrl)
   const formattedTime = currentTx
     ? new Date(currentTx.block.timestamp * 1000).toLocaleString(undefined, {
         year:   'numeric',
@@ -241,14 +251,22 @@ useEffect(() => {
     try {
       const forward = await peekForward()
       if (forward) {
-        const tx = await goForward()
-        setCurrentTx(tx!)
-        logger.debug('Next: reused forward history')
+        const tx = await goForward();
+        if (tx) {
+          setCurrentTx(tx);
+          logger.debug('Next: reused forward history');
+        } else {
+          setError('Unexpected missing forward history.');
+        }
       } else {
-        const tx = await getNextTx(channel)
-        await addHistory(tx)
-        setCurrentTx(tx)
-        logger.debug('Next: added new tx to history')
+              const tx = await getNextTx(channel);
+              if (!tx) {
+                logger.debug("No more content in this channel.");
+              } else {
+                await addHistory(tx);
+                setCurrentTx(tx);
+                logger.debug('Next: added new tx to history');
+              }
       }
     } catch (e) {
       logger.error('Next failed', e)
@@ -271,8 +289,12 @@ useEffect(() => {
 
       // 3) grab and show the very first tx
       const tx = await getNextTx(channel);
-      await addHistory(tx);
-      setCurrentTx(tx);
+      if (!tx) {
+          setError("Couldn’t start roam: no items found.");
+        } else {
+          await addHistory(tx);
+          setCurrentTx(tx);
+        }
     } catch (e) {
       logger.error('Roam failed', e);
       setError('Failed to start new roam.');
