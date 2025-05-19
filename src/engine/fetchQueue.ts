@@ -130,7 +130,7 @@ async function fetchWindow(
 /**
  * Initialize the fetch queue according to channel type and owner fallback
  */
-export async function initFetchQueue(
+/*export async function initFetchQueue(
   channel: Channel,
   options: {
     initialTx?: TxMeta;
@@ -232,7 +232,7 @@ export async function initFetchQueue(
     logger.error("Failed to initialize fetch queue", err);
     throw err;
   }
-}
+} */
 
 /**
  * Get next transaction or trigger background refill
@@ -261,4 +261,162 @@ export async function getNextTx(channel: Channel): Promise<TxMeta | null> {
     return null;
   }
   return tx;
+}
+
+export async function initFetchQueue(
+  channel: Channel,
+  options: {
+    initialTx?: TxMeta;
+    minBlock?: number;
+    maxBlock?: number;
+    ownerAddress?: string;
+  } = {}
+): Promise<{ min: number; max: number }> {
+  queue = [];
+  logger.info("Initializing fetch queue", { channel, options });
+
+  console.log("OPTIONS! ", options);
+  let txs: TxMeta[] = [];
+  let min = 0;
+  let max = 0;
+
+  // —— 1a) Deep-link by txId + explicit range ——
+  if (
+    options.initialTx &&
+    options.minBlock != null &&
+    options.maxBlock != null
+  ) {
+    seenIds.add(options.initialTx.id);
+    const { minBlock: rangeMin, maxBlock: rangeMax, ownerAddress } = options;
+    const owner = ownerAddress ?? channel.ownerAddress;
+
+    logger.info(`Deep-link by ID+range; subset within ${rangeMin}-${rangeMax}`);
+    for (let i = 0; i < MAX_RETRY_ATTEMPTS && txs.length === 0; i++) {
+      if (rangeMax - rangeMin + 1 <= WINDOW_SIZE) {
+        min = rangeMin;
+        max = rangeMax;
+      } else {
+        const start =
+          Math.floor(Math.random() * (rangeMax - rangeMin - WINDOW_SIZE + 2)) +
+          rangeMin;
+        min = start;
+        max = start + WINDOW_SIZE - 1;
+      }
+      logger.debug(`Attempt ${i + 1}/${MAX_RETRY_ATTEMPTS} → ${min}-${max}`);
+      txs = await fetchWindow(channel.media, min, max, owner);
+    }
+
+    // —— 1b) Deep-link by txId only ——
+  } else if (options.initialTx) {
+    seenIds.add(options.initialTx.id);
+    const owner = options.ownerAddress ?? options.initialTx.owner.address;
+
+    logger.info(`Deep-link by ID only; bucket-mode fallback`);
+    for (let i = 0; i < MAX_RETRY_ATTEMPTS && txs.length === 0; i++) {
+      if (channel.recency === "new") {
+        const w = await slideNewWindow(channel);
+        min = w.min;
+        max = w.max;
+      } else {
+        const w = await pickOldWindow();
+        min = w.min;
+        max = w.max;
+      }
+      logger.debug(`Attempt ${i + 1}/${MAX_RETRY_ATTEMPTS} → ${min}-${max}`);
+      txs = await fetchWindow(channel.media, min, max, owner);
+    }
+
+    // —— 2) Deep-link by explicit range only ——
+  } else if (options.minBlock != null && options.maxBlock != null) {
+    const { minBlock: rangeMin, maxBlock: rangeMax, ownerAddress } = options;
+    const owner = ownerAddress ?? channel.ownerAddress;
+
+    logger.info(`Deep-link by range only ${rangeMin}-${rangeMax}`);
+    for (let i = 0; i < MAX_RETRY_ATTEMPTS && txs.length === 0; i++) {
+      if (rangeMax - rangeMin + 1 <= WINDOW_SIZE) {
+        min = rangeMin;
+        max = rangeMax;
+      } else {
+        const start =
+          Math.floor(Math.random() * (rangeMax - rangeMin - WINDOW_SIZE + 2)) +
+          rangeMin;
+        min = start;
+        max = start + WINDOW_SIZE - 1;
+      }
+      logger.debug(`Attempt ${i + 1}/${MAX_RETRY_ATTEMPTS} → ${min}-${max}`);
+      txs = await fetchWindow(channel.media, min, max, owner);
+    }
+
+    // —— 3) Deep-link by owner only (no TX, no range) ——
+  } else if (options.ownerAddress) {
+    const owner = options.ownerAddress;
+    min = 1;
+    max = await getCurrentBlockHeight(GATEWAY_DATA_SOURCE[0]);
+    logger.info(`Deep-link by owner only; full range ${min}-${max}`);
+    txs = await fetchWindow(channel.media, min, max, owner);
+
+    // —— 4) No deep-link params: normal bucket mode ——
+  } else {
+    const owner = channel.ownerAddress;
+    logger.info(
+      `Bucket-mode (“${channel.recency}”) with up to ${MAX_RETRY_ATTEMPTS} attempts`
+    );
+    for (let i = 0; i < MAX_RETRY_ATTEMPTS && txs.length === 0; i++) {
+      if (channel.recency === "new") {
+        const w = await slideNewWindow(channel);
+        min = w.min;
+        max = w.max;
+      } else {
+        const w = await pickOldWindow();
+        min = w.min;
+        max = w.max;
+      }
+      logger.debug(`Attempt ${i + 1}/${MAX_RETRY_ATTEMPTS} → ${min}-${max}`);
+      txs = await fetchWindow(channel.media, min, max, owner);
+    }
+  }
+
+  // —— 5) Manual owner-fallback (if bucket mode found nothing) ——
+  if (txs.length === 0 && channel.ownerAddress && !options.ownerAddress) {
+    // only apply this when user manually toggles owner, not on deep-link owner
+    min = 1;
+    max = await getCurrentBlockHeight(GATEWAY_DATA_SOURCE[0]);
+    logger.warn(
+      `Fallback full history for owner ${channel.ownerAddress}: ${min}-${max}`
+    );
+    txs = await fetchWindow(channel.media, min, max, channel.ownerAddress);
+  }
+
+  // —— 6) Dedupe & enqueue ——
+  const newTxs = txs.filter((tx) => !seenIds.has(tx.id));
+  newTxs.forEach((tx) => seenIds.add(tx.id));
+  queue = newTxs;
+  logger.info(`Queue loaded with ${queue.length} txs`);
+
+  // —— 7) Return the actual window ——
+  return { min, max };
+}
+
+/**
+ * Try up to `maxAttempts` to fetch a window (via the provided rangeFn),
+ * returning both the successful txs and the [min,max] that worked.
+ */
+async function retryFetch(
+  media: Channel["media"],
+  owner: string | undefined,
+  rangeFn: () => Promise<{ min: number; max: number }>,
+  maxAttempts = MAX_RETRY_ATTEMPTS
+): Promise<{ txs: TxMeta[]; min: number; max: number }> {
+  let txs: TxMeta[] = [];
+  let min = 0,
+    max = 0;
+
+  for (let i = 0; i < maxAttempts; i++) {
+    ({ min, max } = await rangeFn());
+    logger.debug(`Attempt ${i + 1}/${maxAttempts} — window ${min}-${max}`);
+    txs = await fetchWindow(media, min, max, owner);
+    if (txs.length) break;
+  }
+
+  return { txs, min, max };
 }
