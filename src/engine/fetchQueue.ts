@@ -396,27 +396,3 @@ export async function initFetchQueue(
   // —— 7) Return the actual window ——
   return { min, max };
 }
-
-/**
- * Try up to `maxAttempts` to fetch a window (via the provided rangeFn),
- * returning both the successful txs and the [min,max] that worked.
- */
-async function retryFetch(
-  media: Channel["media"],
-  owner: string | undefined,
-  rangeFn: () => Promise<{ min: number; max: number }>,
-  maxAttempts = MAX_RETRY_ATTEMPTS
-): Promise<{ txs: TxMeta[]; min: number; max: number }> {
-  let txs: TxMeta[] = [];
-  let min = 0,
-    max = 0;
-
-  for (let i = 0; i < maxAttempts; i++) {
-    ({ min, max } = await rangeFn());
-    logger.debug(`Attempt ${i + 1}/${maxAttempts} — window ${min}-${max}`);
-    txs = await fetchWindow(media, min, max, owner);
-    if (txs.length) break;
-  }
-
-  return { txs, min, max };
-}
