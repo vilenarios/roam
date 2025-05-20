@@ -30,7 +30,7 @@
   width: 100%;
   height: 70vh;
   border: none;
-  background-color: #fafafa;
+  background-color: #0f0121;
 }
 
 .media-wrapper.wide {
@@ -95,7 +95,7 @@
     flex-direction: column;
     align-items: center;
     width: 90%;
-    max-height: 580px;
+    max-height: 480px;
     max-width: 800px;       /* cap on desktop */
     margin: 0 auto;
     overflow-y: auto;
