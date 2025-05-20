@@ -103,18 +103,6 @@ export function App() {
     window.open('','_self'); window.close(); window.location.href='about:blank'
   }
   if (rejected) return null
-  if (!accepted) return (
-    <div className="consent-backdrop">
-      <div className="consent-modal">
-        <h2>⚠️ Content Warning</h2>
-        <p>This app will show anything posted to Arweave - some of it may be sensitive or NSFW. Click at your own risk! You must be 18+ to continue.</p>
-        <div className="consent-actions">
-          <button className="consent-btn accept" onClick={handleAccept}>I accept</button>
-          <button className="consent-btn reject" onClick={handleReject}>Close app</button>
-        </div>
-      </div>
-    </div>
-  )
 
   // Privacy toggle
   const [privacyOn, setPrivacyOn] = useState(true)
@@ -348,7 +336,19 @@ export function App() {
 
   return (
     <div className="app">
-           {/* Interstitial overlay sits at the top */}
+      {!accepted && (
+          <div className="consent-backdrop">
+          <div className="consent-modal">
+            <h2>⚠️ Content Warning</h2>
+            <p>This app will show anything posted to Arweave - some of it may be sensitive or NSFW. Click at your own risk! You must be 18+ to continue.</p>
+            <div className="consent-actions">
+              <button className="consent-btn accept" onClick={handleAccept}>I accept</button>
+              <button className="consent-btn reject" onClick={handleReject}>Close app</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Interstitial overlay sits at the top */}
      {showInterstitial && (
        <Interstitial src="/assets/static-ad.jpg" onClose={handleCloseAd} />
      )}
