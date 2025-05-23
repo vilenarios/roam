@@ -11,7 +11,8 @@ import { useInterstitialInjector } from './hooks/useInterstitialInjector'
 import { MAX_AD_CLICKS, MEDIA_TYPES, MIN_AD_CLICKS, type Channel, type MediaType, type TxMeta } from './constants'
 import { ZoomOverlay } from './components/ZoomOverlay'
 import { Interstitial } from './components/Interstitial'
-import { fetchTxMetaById } from './engine/query'
+import { fetchTxMetaById, getCurrentBlockHeight } from './engine/query'
+import { BlockRangeSlider } from './components/BlockRangeSlider'
 
 export function App() {
   const blockRangeRef = useRef<{ min?: number; max?: number } | null>(null);
@@ -33,6 +34,8 @@ export function App() {
   useEffect(() => {
     let isMounted = true;
     const params = new URLSearchParams(window.location.search);
+
+    getCurrentBlockHeight(GATEWAY_DATA_SOURCE[0]).then(setChainTip);
 
     (async () => {
       const opts: DeepLinkOpts = {};
@@ -104,6 +107,11 @@ export function App() {
   }
   if (rejected) return null
 
+  const [tempRange, setTempRange] = useState<{ min: number; max: number }>({ min: 1, max: 1_000_000_000_000_000 });
+  const [rangeSlider, setRangeSlider] = useState<{ min: number; max: number }>({ min: 1, max: 1_000_000_000_000_000 });
+  const [chainTip, setChainTip] = useState(9999999); // Fallback until fetched
+  const [rangeError, setRangeError] = useState<string | null>(null);
+
   // Privacy toggle
   const [privacyOn, setPrivacyOn] = useState(true)
   const togglePrivacy = () => setPrivacyOn(p=>!p)
@@ -164,6 +172,8 @@ export function App() {
       if (!cancelled && range) {
         // you can store this in state, too, if you want to display it
         blockRangeRef.current = range;
+        setRangeSlider(range);
+        setTempRange(range);
       }
 
       let firstTx: TxMeta | null = null;
@@ -198,8 +208,6 @@ export function App() {
     return () => { cancelled = true };
   }, [media, recency, ownerAddress, deepLinkParsed]);
   
-  const txUrl = currentTx ? `${GATEWAY_DATA_SOURCE[0]}/${currentTx.id}` : ''
-  console.log ("TX URL: ", txUrl)
   const formattedTime = currentTx
     ? new Date(currentTx.block.timestamp * 1000).toLocaleString(undefined, {
         year:   'numeric',
@@ -280,7 +288,10 @@ export function App() {
 
       // 2) init a brand-new queue
       const range = await initFetchQueue(channel);
-      if (range) blockRangeRef.current = range;
+      if (range) {
+        blockRangeRef.current = range;
+        setTempRange(range);
+      }
 
       // 3) grab and show the very first tx
       const tx = await getNextTx(channel);
@@ -289,6 +300,7 @@ export function App() {
         } else {
           await addHistory(tx);
           setCurrentTx(tx);
+
         }
     } catch (e) {
       logger.error('Roam failed', e);
@@ -438,11 +450,6 @@ export function App() {
           <button className={media==='text'?'active':''} onClick={()=>{setMedia('text'); closeChannels()}}>📖 Text</button>
           <button className={media==='everything'? 'active' : ''} onClick={()=>{setMedia('everything'); closeChannels()}}>⚡ Everything</button>
         </div>
-        <h3>When</h3>
-        <div className="time-picker">
-          <button className={recency==='new'?'active':''} onClick={()=>{setRecency('new'); closeChannels()}}>⏰ New</button>
-          <button className={recency==='old'?'active':''} onClick={()=>{setRecency('old'); closeChannels()}}>🗄️ Old</button>
-        </div>
         {/* Owner filter controls moved into drawer */}
         {currentTx && (
           <div className="owner-filter">
@@ -457,8 +464,64 @@ export function App() {
             )}
           </div>
         )}
+        <h3>When</h3>
+        <div className="time-picker">
+          <button className={recency==='new'?'active':''} onClick={()=>{setRecency('new'); closeChannels()}}>⏰ New</button>
+          <button className={recency==='old'?'active':''} onClick={()=>{setRecency('old'); closeChannels()}}>🗄️ Old</button>
+        </div>
+        <BlockRangeSlider
+          tempRange={tempRange}
+          setTempRange={setTempRange}
+          chainTip={chainTip}
+        />
+
+        {rangeError && <div className="slider-error">{rangeError}</div>}
+
+        <div className="block-range-actions">
+          <button
+            className="btn"
+            onClick={() => {
+              setTempRange(rangeSlider); // revert changes
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            className="btn"
+            onClick={async () => {
+              if (tempRange.min >= tempRange.max) return;
+              setQueueLoading(true);
+              setRangeError(null);
+              try {
+                setRangeSlider(tempRange);
+                setCurrentTx(null);
+                await initFetchQueue(
+                  { media, recency, ownerAddress },
+                  { minBlock: tempRange.min, maxBlock: tempRange.max, ownerAddress }
+                );
+                blockRangeRef.current = { min: tempRange.min, max: tempRange.max };
+                const tx = await getNextTx(channel);
+                if (!tx) {
+                  setError("No items found within this block range.");
+                } else {
+                  await addHistory(tx);
+                  setCurrentTx(tx);
+                }
+                closeChannels();
+              } catch (err) {
+                setRangeError("Couldn’t apply custom block range.");
+                console.error(err);
+              } finally {
+                setQueueLoading(false);
+              }
+            }}
+            disabled={tempRange.min >= tempRange.max || queueLoading}
+          >
+            {queueLoading ? "Loading…" : "Apply"}
+          </button>
+        </div>
       </div>
-      
+
       <footer className="app-footer">
       <nav>
             <a
@@ -472,7 +535,7 @@ export function App() {
           <span className="footer-separator">|</span>
           <a href="https://github.com/vilenarios/roam" target="_blank" rel="noopener noreferrer" className="footer-link">GitHub</a>
         </nav>
-      <div className="footer-copy">Roam v0.0.2</div>
+      <div className="footer-copy">Roam v0.0.3</div>
     </footer>
       {/* About Modal */}
         {showAbout && (

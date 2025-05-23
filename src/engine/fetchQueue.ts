@@ -275,7 +275,6 @@ export async function initFetchQueue(
   queue = [];
   logger.info("Initializing fetch queue", { channel, options });
 
-  console.log("OPTIONS! ", options);
   let txs: TxMeta[] = [];
   let min = 0;
   let max = 0;
@@ -341,9 +340,9 @@ export async function initFetchQueue(
           Math.floor(Math.random() * (rangeMax - rangeMin - WINDOW_SIZE + 2)) +
           rangeMin;
         min = start;
-        max = start + WINDOW_SIZE - 1;
+        max = start + (WINDOW_SIZE * i) - 1; // increase window size for each attempt
       }
-      logger.debug(`Attempt ${i + 1}/${MAX_RETRY_ATTEMPTS} → ${min}-${max}`);
+      logger.info(`Attempt ${i + 1}/${MAX_RETRY_ATTEMPTS} → ${min}-${max}`);
       txs = await fetchWindow(channel.media, min, max, owner);
     }
 

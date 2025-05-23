@@ -73,4 +73,4 @@ export const MAX_AD_CLICKS = 50;
 export const MIN_OLD_BLOCK = 100_000;
 export const MAX_RETRY_ATTEMPTS = 8;
 /** Base window size (blocks) */
-export const WINDOW_SIZE = 1000;
+export const WINDOW_SIZE = 10_000;
