@@ -3,6 +3,7 @@ import type { JSX } from 'preact/jsx-runtime'
 import '../styles/details-drawer.css'
 import { useState } from 'preact/hooks'
 import type { TxMeta } from '../constants'
+import { GATEWAY_DATA_SOURCE } from '../engine/fetchQueue'
 
 export interface DetailsDrawerProps {
   txMeta: TxMeta | null
@@ -30,7 +31,7 @@ export const DetailsDrawer = ({ txMeta, open, onClose }: DetailsDrawerProps): JS
         </header>
         <div className="details-content">
           <dl>
-            <dt>ID</dt>
+            <dt>Transaction ID</dt>
             <dd className="mono">
               <a href={`https://viewblock.io/arweave/tx/${id}`} target="_blank" rel="noopener noreferrer">
                 {id}
@@ -62,11 +63,38 @@ export const DetailsDrawer = ({ txMeta, open, onClose }: DetailsDrawerProps): JS
             <dt>Tags</dt>
             <dd>
             <div className="tag-list">
-                {visibleTags.map(tag => (
-                <span className="tag-item" key={`${tag.name}-${tag.value}`}>
-                    <strong>{tag.name}:</strong> {tag.value}
-                </span>
-                ))}
+              {visibleTags.map(tag => {
+                let valueNode: JSX.Element | string = tag.value;
+                const gatewayDataSourceNoProtocol = GATEWAY_DATA_SOURCE[0].replace("https://","")
+
+                if (tag.name === 'Drive-Id') {
+                  valueNode = (
+                    <a
+                      href={`https://ardrive.${gatewayDataSourceNoProtocol}/#/drives/${tag.value}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {tag.value}
+                    </a>
+                  );
+                } else if (tag.name === 'File-Id') {
+                  valueNode = (
+                    <a
+                      href={`https://ardrive.${gatewayDataSourceNoProtocol}/#/file/${tag.value}/view`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {tag.value}
+                    </a>
+                  );
+                }
+
+                return (
+                  <span className="tag-item" key={`${tag.name}-${tag.value}`}>
+                    <strong>{tag.name}:</strong> {valueNode}
+                  </span>
+                );
+              })}
                 {tags.length > 5 && (
                 <button
                     class="more-tags"

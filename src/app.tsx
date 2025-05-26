@@ -300,7 +300,6 @@ export function App() {
         } else {
           await addHistory(tx);
           setCurrentTx(tx);
-
         }
     } catch (e) {
       logger.error('Roam failed', e);
@@ -345,7 +344,6 @@ export function App() {
     }
   };
   
-
   return (
     <div className="app">
       {!accepted && (
@@ -448,6 +446,7 @@ export function App() {
           <button className={media==='videos'?'active':''} onClick={()=>{setMedia('videos'); closeChannels()}}>🎬 Videos</button>
           <button className={media==='websites'?'active':''} onClick={()=>{setMedia('websites'); closeChannels()}}>🌐 Websites</button>
           <button className={media==='text'?'active':''} onClick={()=>{setMedia('text'); closeChannels()}}>📖 Text</button>
+          <button className={media==='arfs'? 'active' : ''} onClick={()=>{setMedia('arfs'); closeChannels()}}>📁 ArFS</button>
           <button className={media==='everything'? 'active' : ''} onClick={()=>{setMedia('everything'); closeChannels()}}>⚡ Everything</button>
         </div>
         {/* Owner filter controls moved into drawer */}
@@ -533,9 +532,9 @@ export function App() {
               }}   
             > About </a>
           <span className="footer-separator">|</span>
-          <a href="https://github.com/vilenarios/roam" target="_blank" rel="noopener noreferrer" className="footer-link">GitHub</a>
+          <a href="https://github.com/roam-the-permaweb/roam-web" target="_blank" rel="noopener noreferrer" className="footer-link">GitHub</a>
         </nav>
-      <div className="footer-copy">Roam v0.0.3</div>
+      <div className="footer-copy">Roam v0.0.4</div>
     </footer>
       {/* About Modal */}
         {showAbout && (

@@ -24,9 +24,16 @@ export const MediaView = ({
   onZoom,
   onCorrupt
 }: MediaViewProps) => {
-  const { id, data: { size }, tags } = txMeta;
-  const contentType = tags.find(t => t.name === 'Content-Type')?.value || '';
-  const directUrl = `${GATEWAY_DATA_SOURCE[0]}/${id}`;
+  const { id, tags } = txMeta;
+
+  const arfsMeta = txMeta.arfsMeta;
+  const contentType =
+    arfsMeta?.contentType ||     // fallback if old style
+    tags.find(t => t.name === 'Content-Type')?.value || '';
+  const size = arfsMeta?.size ?? txMeta.data.size;
+  const dataTxId = arfsMeta?.dataTxId || id;
+  const directUrl = `${GATEWAY_DATA_SOURCE[0]}/${dataTxId}`;
+
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const wideContentTypes = [
@@ -167,7 +174,8 @@ export const MediaView = ({
     if (
       contentType.startsWith('text/html') ||
       contentType === 'application/xhtml+xml' ||
-      contentType.startsWith('application/x.arweave-manifest')
+      contentType.startsWith('application/x.arweave-manifest') || 
+      contentType.startsWith('application/json')
     ) {
       return (
         <div className="media-embed-wrapper">

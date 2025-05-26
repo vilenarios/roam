@@ -62,7 +62,7 @@ src/
 
 1. **Clone the repo**  
    ```bash
-   git clone https://github.com/vilenarios/roam.git
+   git clone https://github.com/roam-the-permaweb/roam-web.git
    cd roam
    ```
 
@@ -97,7 +97,7 @@ Before submitting a PR:
 
 ## 📬 Feedback & Support
 
-- File an [issue](https://github.com/vilenarios/roam/issues)
+- File an [issue](https://github.com/roam-the-permaweb/roam-web/issues)
 - Ping us on X: [@RoamThePermaweb](https://x.com/RoamThePermaweb)
 - Want to build something with Roam? DM us or open a discussion!
 

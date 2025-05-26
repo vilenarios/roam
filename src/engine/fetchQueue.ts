@@ -128,113 +128,6 @@ async function fetchWindow(
 }
 
 /**
- * Initialize the fetch queue according to channel type and owner fallback
- */
-/*export async function initFetchQueue(
-  channel: Channel,
-  options: {
-    initialTx?: TxMeta;
-    minBlock?: number;
-    maxBlock?: number;
-    ownerAddress?: string;
-  } = {}
-): Promise<{ min: number; max: number } | undefined> {
-  try {
-    queue = [];
-    logger.info("Initializing fetch queue", { channel, options });
-
-    let txs: TxMeta[] = [];
-    let min: number = 0;
-    let max: number = 0;
-
-    // 1) Deep-link by txId
-    if (options.initialTx) {
-      seenIds.add(options.initialTx.id);
-
-      const center = options.initialTx.block.height;
-      min = options.minBlock ?? Math.max(1, center - WINDOW_SIZE);
-      max = options.maxBlock ?? center + WINDOW_SIZE;
-      const owner = options.ownerAddress ?? options.initialTx.owner.address;
-      logger.info(`Deep link window blocks ${min}-${max} for owner: ${owner}`);
-      txs = await fetchWindow(channel.media, min, max, owner);
-
-      // 2) Deep-link by explicit block range breaking into a window subset
-    } else if (options.minBlock != null && options.maxBlock != null) {
-      const rangeMin = options.minBlock;
-      const rangeMax = options.maxBlock;
-      const windowSize = WINDOW_SIZE;
-
-      if (rangeMax - rangeMin + 1 <= windowSize) {
-        min = rangeMin;
-        max = rangeMax;
-      } else {
-        const start =
-          Math.floor(Math.random() * (rangeMax - rangeMin - windowSize + 2)) +
-          rangeMin;
-        min = start;
-        max = start + windowSize - 1;
-      }
-      const owner = options.ownerAddress ?? channel.ownerAddress;
-      logger.info(
-        `Deep link explicit window subset blocks ${min}-${max} within ${rangeMin}-${rangeMax} for owner: ${owner}`
-      );
-      txs = await fetchWindow(channel.media, min, max, owner);
-
-      // 3) Bucket mode with retries
-    } else {
-      const owner = channel.ownerAddress;
-      let attempt = 0;
-
-      while (attempt < MAX_RETRY_ATTEMPTS && txs.length === 0) {
-        if (channel.recency === "new") {
-          const w = await slideNewWindow(channel);
-          min = w.min;
-          max = w.max;
-          logger.debug(
-            `Attempt ${attempt + 1}/${MAX_RETRY_ATTEMPTS} — New window blocks ${min}-${max}`
-          );
-        } else {
-          const w = await pickOldWindow();
-          min = w.min;
-          max = w.max;
-          logger.debug(
-            `Attempt ${attempt + 1}/${MAX_RETRY_ATTEMPTS} — Old window blocks ${min}-${max}`
-          );
-        }
-        txs = await fetchWindow(channel.media, min, max, owner);
-        attempt++;
-      }
-
-      if (txs.length === 0) {
-        logger.warn(
-          `No txs found after ${MAX_RETRY_ATTEMPTS} ${channel.recency} window attempts`
-        );
-      }
-    }
-
-    // 4) Owner-only fallback if still empty
-    if (txs.length === 0 && channel.ownerAddress) {
-      min = 1;
-      max = await getCurrentBlockHeight(GATEWAY_DATA_SOURCE[0]);
-      logger.warn(`Fallback: full history from ${min}-${max}`);
-      txs = await fetchWindow(channel.media, min, max, channel.ownerAddress);
-    }
-
-    // 5) Dedupe & enqueue
-    const newTxs = txs.filter((tx) => !seenIds.has(tx.id));
-    newTxs.forEach((tx) => seenIds.add(tx.id));
-    queue = newTxs;
-    logger.info(`Queue loaded with ${queue.length} new transactions`);
-
-    // 6) Return the actual block-range used
-    return { min, max };
-  } catch (err) {
-    logger.error("Failed to initialize fetch queue", err);
-    throw err;
-  }
-} */
-
-/**
  * Get next transaction or trigger background refill
  */
 export async function getNextTx(channel: Channel): Promise<TxMeta | null> {
@@ -256,6 +149,39 @@ export async function getNextTx(channel: Channel): Promise<TxMeta | null> {
   }
 
   const tx = queue.shift();
+  if (tx && channel.media === 'arfs') {
+    const entityType = getTagValue(tx.tags, "Entity-Type");
+    if (entityType !== "file") {
+      logger.debug("Skipping non-ArFS file transaction");
+      return getNextTx(channel); // recursively try next
+    }
+
+    try {
+      const response = await fetch(`${GATEWAY_DATA_SOURCE[0]}/${tx.id}`);
+      const metadata = await response.json();
+
+      const {
+        dataTxId,
+        name,
+        size,
+        dataContentType,
+        ...rest
+      } = metadata;
+
+      tx.arfsMeta = {
+        dataTxId,
+        name,
+        size,
+        contentType: dataContentType,
+        customTags: rest,
+      };
+
+    } catch (err) {
+      logger.warn(`Failed to load ArFS metadata for ${tx.id}`, err);
+      return getNextTx(channel); // try next tx
+    }
+  }
+
   if (!tx) {
     logger.warn("No transactions available after refill");
     return null;
@@ -394,4 +320,9 @@ export async function initFetchQueue(
 
   // —— 7) Return the actual window ——
   return { min, max };
+}
+
+function getTagValue(tags: { name: string; value: string }[], name: string): string | undefined {
+  const tag = tags.find(t => t.name === name);
+  return tag?.value;
 }

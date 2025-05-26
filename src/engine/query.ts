@@ -70,7 +70,9 @@ export async function fetchTxsRange(
   owner?: string
 ): Promise<TxMeta[]> {
   const ct = CONTENT_TYPES[media];
+
   const ownersArg = owner ? `owners: ["${owner}"],` : "";
+  const entityTypeArg = media === 'arfs' ? `{ name: "Entity-Type", values: "file" }` : ""
 
   const query = `
     query FetchTxsRange(
@@ -83,7 +85,10 @@ export async function fetchTxsRange(
       transactions(
         ${ownersArg}
         block: { min: $min, max: $max }
-        tags: [{ name: "Content-Type", values: $ct }]
+        tags: [
+          { name: "Content-Type", values: $ct }
+          ${entityTypeArg}
+        ]
         sort: HEIGHT_DESC
         first: $first
         after: $after

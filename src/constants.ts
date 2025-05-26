@@ -7,7 +7,8 @@ export type MediaType =
   | "music"
   | "websites"
   | "text"
-  | "everything";
+  | "everything"
+  | "arfs";
 export type Recency = "new" | "old";
 export interface Channel {
   media: MediaType;
@@ -22,6 +23,7 @@ export const MEDIA_TYPES: MediaType[] = [
   "websites",
   "text",
   "everything",
+  "arfs",
 ];
 
 /**
@@ -41,6 +43,13 @@ export interface TxMeta {
   tags: { name: string; value: string }[];
   data: { size: number };
   block: { height: number; timestamp: number };
+  arfsMeta?: {
+    dataTxId: string;
+    name: string;
+    size: number;
+    contentType: string;
+    customTags: Record<string, string>;
+  };
 }
 
 // --------------------------------------------------------------------------
@@ -52,6 +61,7 @@ const BASE_CONTENT_TYPES: Record<Exclude<MediaType, "everything">, string[]> = {
   music: ["audio/mpeg", "audio/mp3", "audio/wav"],
   websites: ["application/x.arweave-manifest+json", "text/html"],
   text: ["text/markdown", "application/pdf"],
+  arfs: ["application/json"] // this ensures only public arfs files
 };
 
 // Build full map including "everything" as the union of all other arrays
