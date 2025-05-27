@@ -6,6 +6,7 @@ import type { TxMeta } from '../constants';
 const IMAGE_LOAD_THRESHOLD = 25 * 1024 * 1024;
 const VIDEO_LOAD_THRESHOLD = 200 * 1024 * 1024;
 const AUDIO_LOAD_THRESHOLD = 50 * 1024 * 1024;
+const TEXT_LOAD_THRESHOLD = 10 * 1024 * 1024;
 
 export interface MediaViewProps {
   txMeta: TxMeta;
@@ -47,24 +48,32 @@ export const MediaView = ({
   const [manualLoad, setManualLoad] = useState(contentType.startsWith('image/') && size > IMAGE_LOAD_THRESHOLD);
   const [manualLoadVideo, setManualLoadVideo] = useState(contentType.startsWith('video/') && size > VIDEO_LOAD_THRESHOLD);
   const [manualLoadAudio, setManualLoadAudio] = useState(contentType.startsWith('audio/') && size > AUDIO_LOAD_THRESHOLD);
+  const [manualLoadText, setManualLoadText] = useState(false);
   const [textContent, setTextContent] = useState<string | null>(null);
   const [loadingText, setLoadingText] = useState(false);
   const [errorText, setErrorText] = useState<string | null>(null);
 
   // Reset flags when tx changes
-  useEffect(() => {
-    setManualLoad(contentType.startsWith('image/') && size > IMAGE_LOAD_THRESHOLD);
-    setManualLoadVideo(contentType.startsWith('video/') && size > VIDEO_LOAD_THRESHOLD);
-    setManualLoadAudio(contentType.startsWith('audio/') && size > AUDIO_LOAD_THRESHOLD);
-    setTextContent(null);
-    setLoadingText(false);
-    setErrorText(null);
-  }, [id, contentType, size]);
+useEffect(() => {
+  const isImage = contentType.startsWith('image/');
+  const isVideo = contentType.startsWith('video/');
+  const isAudio = contentType.startsWith('audio/');
+  const isText = ['text/plain', 'text/markdown'].includes(contentType);
+
+  setManualLoad(isImage && size > IMAGE_LOAD_THRESHOLD);
+  setManualLoadVideo(isVideo && size > VIDEO_LOAD_THRESHOLD);
+  setManualLoadAudio(isAudio && size > AUDIO_LOAD_THRESHOLD);
+  setManualLoadText(isText && size > TEXT_LOAD_THRESHOLD);
+
+  setTextContent(null);
+  setLoadingText(false);
+  setErrorText(null);
+}, [id, contentType, size]);
 
   // Fetch plaintext
   useEffect(() => {
     let canceled = false;
-    if (!['text/plain', 'text/markdown'].includes(contentType)) return;
+    if (!['text/plain', 'text/markdown'].includes(contentType) || manualLoadText) return;
 
     setLoadingText(true);
     fetch(directUrl)
@@ -152,6 +161,14 @@ export const MediaView = ({
     }
 
     if (['text/plain', 'text/markdown'].includes(contentType)) {
+      if (manualLoadText) {
+        return (
+          <button className="media-load-btn" onClick={() => setManualLoadText(false)}>
+            Tap to load text ({(size / 1024 / 1024).toFixed(2)} MB)
+          </button>
+        );
+      }
+
       if (loadingText) return <div className="media-loading">Loading…</div>;
       if (errorText) return <div className="media-error">{errorText}</div>;
       return (
