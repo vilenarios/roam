@@ -129,9 +129,6 @@
   
   /* Responsive: drawer narrower on desktop */
   @media (min-width: 768px) {
-    .channels-drawer {
-      max-width: 25vw;
-    }
   }
 
   .block-slider {

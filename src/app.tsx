@@ -24,11 +24,13 @@ export function App() {
     maxBlock?: number;
     channel?: Channel;
     ownerAddress?: string;
+    appName?: string;
   };
 
   const [deepLinkOpts, setDeepLinkOpts] = useState<DeepLinkOpts| null>(null);
   const [deepLinkParsed, setDeepLinkParsed] = useState(false);
   const [ownerAddress, setOwnerAddress] = useState<string|undefined>()
+  const [appName, setAppName] = useState<string|undefined>()
 
   // run once on mount
   useEffect(() => {
@@ -48,9 +50,13 @@ export function App() {
 
       // 2) ownerAddress → read but only set state if present
       if (params.has('ownerAddress')) {
-        const addr = params.get('ownerAddress')!;
-        opts.ownerAddress = addr;
-        if (isMounted) setOwnerAddress(addr);
+        opts.ownerAddress = params.get('ownerAddress')!;
+        if (isMounted) setOwnerAddress(opts.ownerAddress);
+      }
+
+      if (params.has('appName')) {
+        opts.appName = params.get('appName')!;
+        if (isMounted) setAppName(opts.appName);
       }
 
       // 3) minBlock / maxBlock → read into opts
@@ -68,7 +74,8 @@ export function App() {
           opts.channel = {
             media: rawMedia as MediaType,
             recency,                // keep whatever your UI had selected
-            ownerAddress: undefined // owner comes from opts.ownerAddress
+            ownerAddress: undefined, // owner comes from opts.ownerAddress
+            appName: undefined
           };
           if (isMounted) setMedia(rawMedia as MediaType);
         } else {
@@ -78,7 +85,8 @@ export function App() {
         opts.channel = {
           media: 'everything' as MediaType,
           recency,
-          ownerAddress: undefined
+          ownerAddress: undefined,
+          appName: undefined
         }
       }
 
@@ -136,7 +144,7 @@ export function App() {
   // Channel & time
   const [media, setMedia] = useState<Channel['media']>('images')
   const [recency, setRecency] = useState<Channel['recency']>('old')
-  const channel: Channel = { media, recency, ownerAddress }
+  const channel: Channel = { media, recency, ownerAddress, appName }
 
   // Channels drawer
   const [showChannels, setShowChannels] = useState(false)
@@ -165,6 +173,7 @@ export function App() {
             minBlock:    deepLinkOpts.minBlock,
             maxBlock:    deepLinkOpts.maxBlock,
             ownerAddress: deepLinkOpts.ownerAddress,
+            appName: deepLinkOpts.appName
           }
         : {};
 
@@ -206,7 +215,7 @@ export function App() {
       });
 
     return () => { cancelled = true };
-  }, [media, recency, ownerAddress, deepLinkParsed]);
+  }, [media, recency, ownerAddress, appName, deepLinkParsed]);
   
   const formattedTime = currentTx
     ? new Date(currentTx.block.timestamp * 1000).toLocaleString(undefined, {
@@ -309,7 +318,6 @@ export function App() {
     }
   };
   
-  // Share
   const handleShare = async () => {
     if (!currentTx) return;
   
@@ -320,6 +328,10 @@ export function App() {
     // if you have an explicit ownerAddress filter, include it
     if (ownerAddress) {
       params.set("ownerAddress", ownerAddress);
+    }
+
+    if (appName) {
+      params.set("appName", appName);
     }
   
     // explicitly check for undefined, not falsy
@@ -343,6 +355,34 @@ export function App() {
       alert("Copied!");
     }
   };
+
+  const handleDownload = async () => {
+    if (!currentTx) return;
+
+    const arfsMeta = currentTx.arfsMeta;
+    const dataTxId = arfsMeta?.dataTxId || currentTx.id;
+    const filename = arfsMeta?.name || dataTxId;
+
+    try {
+      const response = await fetch(`${GATEWAY_DATA_SOURCE[0]}/${dataTxId}`);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Download failed:", err);
+      alert("Failed to download the file.");
+    }
+  };
+
   
   return (
     <div className="app">
@@ -423,6 +463,7 @@ export function App() {
 
           <div className="media-actions">
             <button className="btn share-btn" onClick={handleShare}>🔗 Share</button>
+            <button className="btn download-btn" onClick={handleDownload}>⬇️ Download</button>
             <button className="btn details-btn" onClick={()=>setDetailsOpen(true)}>📇 Details</button>
           </div>
         </>}
@@ -495,8 +536,8 @@ export function App() {
                 setRangeSlider(tempRange);
                 setCurrentTx(null);
                 await initFetchQueue(
-                  { media, recency, ownerAddress },
-                  { minBlock: tempRange.min, maxBlock: tempRange.max, ownerAddress }
+                  { media, recency, ownerAddress, appName },
+                  { minBlock: tempRange.min, maxBlock: tempRange.max, ownerAddress, appName }
                 );
                 blockRangeRef.current = { min: tempRange.min, max: tempRange.max };
                 const tx = await getNextTx(channel);

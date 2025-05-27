@@ -122,9 +122,10 @@ async function fetchWindow(
   media: Channel["media"],
   min: number,
   max: number,
-  owner?: string
+  owner?: string,
+  appName?: string,
 ): Promise<TxMeta[]> {
-  return fetchTxsRange(media, min, max, owner);
+  return fetchTxsRange(media, min, max, owner, appName);
 }
 
 /**
@@ -196,6 +197,7 @@ export async function initFetchQueue(
     minBlock?: number;
     maxBlock?: number;
     ownerAddress?: string;
+    appName?: string;
   } = {}
 ): Promise<{ min: number; max: number }> {
   queue = [];
@@ -212,8 +214,9 @@ export async function initFetchQueue(
     options.maxBlock != null
   ) {
     seenIds.add(options.initialTx.id);
-    const { minBlock: rangeMin, maxBlock: rangeMax, ownerAddress } = options;
+    const { minBlock: rangeMin, maxBlock: rangeMax, ownerAddress, appName } = options;
     const owner = ownerAddress ?? channel.ownerAddress;
+    const appNameToUse = appName ?? channel.appName;
 
     logger.info(`Deep-link by ID+range; subset within ${rangeMin}-${rangeMax}`);
     for (let i = 0; i < MAX_RETRY_ATTEMPTS && txs.length === 0; i++) {
@@ -228,14 +231,14 @@ export async function initFetchQueue(
         max = start + WINDOW_SIZE - 1;
       }
       logger.debug(`Attempt ${i + 1}/${MAX_RETRY_ATTEMPTS} → ${min}-${max}`);
-      txs = await fetchWindow(channel.media, min, max, owner);
+      txs = await fetchWindow(channel.media, min, max, owner, appNameToUse);
     }
 
     // —— 1b) Deep-link by txId only ——
   } else if (options.initialTx) {
     seenIds.add(options.initialTx.id);
     const owner = options.ownerAddress ?? options.initialTx.owner.address;
-
+    const appNameToUse = options.appName;
     logger.info(`Deep-link by ID only; bucket-mode fallback`);
     for (let i = 0; i < MAX_RETRY_ATTEMPTS && txs.length === 0; i++) {
       if (channel.recency === "new") {
@@ -248,13 +251,14 @@ export async function initFetchQueue(
         max = w.max;
       }
       logger.debug(`Attempt ${i + 1}/${MAX_RETRY_ATTEMPTS} → ${min}-${max}`);
-      txs = await fetchWindow(channel.media, min, max, owner);
+      txs = await fetchWindow(channel.media, min, max, owner, appNameToUse);
     }
 
     // —— 2) Deep-link by explicit range only ——
   } else if (options.minBlock != null && options.maxBlock != null) {
-    const { minBlock: rangeMin, maxBlock: rangeMax, ownerAddress } = options;
+    const { minBlock: rangeMin, maxBlock: rangeMax, ownerAddress, appName } = options;
     const owner = ownerAddress ?? channel.ownerAddress;
+    const appNameToUse = appName ?? channel.appName;
 
     logger.info(`Deep-link by range only ${rangeMin}-${rangeMax}`);
     for (let i = 0; i < MAX_RETRY_ATTEMPTS && txs.length === 0; i++) {
@@ -269,20 +273,26 @@ export async function initFetchQueue(
         max = start + (WINDOW_SIZE * i) - 1; // increase window size for each attempt
       }
       logger.info(`Attempt ${i + 1}/${MAX_RETRY_ATTEMPTS} → ${min}-${max}`);
-      txs = await fetchWindow(channel.media, min, max, owner);
+      txs = await fetchWindow(channel.media, min, max, owner, appNameToUse);
     }
 
     // —— 3) Deep-link by owner only (no TX, no range) ——
   } else if (options.ownerAddress) {
-    const owner = options.ownerAddress;
     min = 1;
     max = await getCurrentBlockHeight(GATEWAY_DATA_SOURCE[0]);
     logger.info(`Deep-link by owner only; full range ${min}-${max}`);
-    txs = await fetchWindow(channel.media, min, max, owner);
+    txs = await fetchWindow(channel.media, min, max, options.ownerAddress, options.appName);
 
     // —— 4) No deep-link params: normal bucket mode ——
+  } else if (channel.ownerAddress && !options.ownerAddress) {
+    // only apply this when user manually toggles owner, not on deep-link owner
+    min = 1;
+    max = await getCurrentBlockHeight(GATEWAY_DATA_SOURCE[0]);
+    logger.info(
+      `Getting full history for owner ${channel.ownerAddress}: ${min}-${max}`
+    );
+    txs = await fetchWindow(channel.media, min, max, channel.ownerAddress, channel.appName);
   } else {
-    const owner = channel.ownerAddress;
     logger.info(
       `Bucket-mode (“${channel.recency}”) with up to ${MAX_RETRY_ATTEMPTS} attempts`
     );
@@ -297,19 +307,8 @@ export async function initFetchQueue(
         max = w.max;
       }
       logger.debug(`Attempt ${i + 1}/${MAX_RETRY_ATTEMPTS} → ${min}-${max}`);
-      txs = await fetchWindow(channel.media, min, max, owner);
+      txs = await fetchWindow(channel.media, min, max, channel.ownerAddress, options.appName);
     }
-  }
-
-  // —— 5) Manual owner-fallback (if bucket mode found nothing) ——
-  if (txs.length === 0 && channel.ownerAddress && !options.ownerAddress) {
-    // only apply this when user manually toggles owner, not on deep-link owner
-    min = 1;
-    max = await getCurrentBlockHeight(GATEWAY_DATA_SOURCE[0]);
-    logger.warn(
-      `Fallback full history for owner ${channel.ownerAddress}: ${min}-${max}`
-    );
-    txs = await fetchWindow(channel.media, min, max, channel.ownerAddress);
   }
 
   // —— 6) Dedupe & enqueue ——

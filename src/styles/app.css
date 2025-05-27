@@ -150,6 +150,7 @@
 .footer-copy {
   font-size: 0.85rem;
   color: #888;
+  padding-top: 4px;
 }
 
 /* Append to src/styles/app.css */
@@ -210,7 +211,6 @@
 .tx-info {
   display: flex;
   justify-content: center;
-  margin-top: -5px;
   margin-bottom: 10px;
   font-size: 0.75rem;
   gap: 1.5rem;

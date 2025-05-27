@@ -14,6 +14,7 @@ export interface Channel {
   media: MediaType;
   recency: Recency;
   ownerAddress?: string; // optional Arweave address filter
+  appName?: string; // optional App-Name filter
 }
 
 export const MEDIA_TYPES: MediaType[] = [

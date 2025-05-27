@@ -11,16 +11,21 @@ export interface DetailsDrawerProps {
   onClose: () => void
 }
 
-/**
- * A sliding drawer that displays full transaction metadata
- * and share controls.
- */
+function shortenId(id: string, head = 6, tail = 6): string {
+  return id.length > head + tail + 3 ? `${id.slice(0, head)}...${id.slice(-tail)}` : id;
+}
+
 export const DetailsDrawer = ({ txMeta, open, onClose }: DetailsDrawerProps): JSX.Element | null => {
   if (!open || !txMeta) return null
 
-  const { id, owner, fee, quantity, tags, data, block } = txMeta
-  const [showAllTags, setShowAllTags] = useState(false);
-  const visibleTags = showAllTags ? tags : tags.slice(0, 5);
+  const { id, owner, fee, quantity, tags, data, block, arfsMeta } = txMeta
+  const [showAllTags, setShowAllTags] = useState(false)
+  const visibleTags = showAllTags ? tags : tags.slice(0, 5)
+  const gatewayDataSourceNoProtocol = GATEWAY_DATA_SOURCE[0].replace('https://', '')
+
+  const driveIdTag = tags.find(tag => tag.name === 'Drive-Id')
+  const fileIdTag = tags.find(tag => tag.name === 'File-Id')
+
   return (
     <>
       <div className="details-backdrop open" onClick={onClose} />
@@ -31,80 +36,152 @@ export const DetailsDrawer = ({ txMeta, open, onClose }: DetailsDrawerProps): JS
         </header>
         <div className="details-content">
           <dl>
+
+            {/* I. File Metadata (ArFS Priority) */}
+            {arfsMeta && (
+              <>
+                <dt>Filename</dt>
+                <dd>{arfsMeta.name}</dd>
+
+                <dt>File Type</dt>
+                <dd>{arfsMeta.contentType}</dd>
+
+                <dt>File Size</dt>
+                <dd>{arfsMeta.size.toLocaleString()} bytes</dd>
+
+                {arfsMeta.customTags?.lastModifiedDate && (
+                  <>
+                    <dt>Last Modified</dt>
+                    <dd>{new Date(Number(arfsMeta.customTags.lastModifiedDate)).toLocaleString()}</dd>
+                  </>
+                )}
+
+                <dt>ArFS Data Tx</dt>
+                <dd className="mono">
+                  <a
+                    href={`https://viewblock.io/arweave/tx/${arfsMeta.dataTxId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title={arfsMeta.dataTxId}
+                  >
+                    {shortenId(arfsMeta.dataTxId)}
+                  </a>
+                </dd>
+              </>
+            )}
+
+            {/* II. ArDrive Links */}
+            {(driveIdTag || fileIdTag) && (
+              <>
+                <dt>ArDrive Links</dt>
+                <dd>
+                  <div className="tag-list">
+                    {driveIdTag && (
+                      <span className="tag-item" key={`drive-${driveIdTag.value}`}>
+                        <strong>Drive-Id:</strong>{' '}
+                        <a
+                          href={`https://ardrive.${gatewayDataSourceNoProtocol}/#/drives/${driveIdTag.value}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title={driveIdTag.value}
+                        >
+                          {shortenId(driveIdTag.value)}
+                        </a>
+                      </span>
+                    )}
+                    {fileIdTag && (
+                      <span className="tag-item" key={`file-${fileIdTag.value}`}>
+                        <strong>File-Id:</strong>{' '}
+                        <a
+                          href={`https://ardrive.${gatewayDataSourceNoProtocol}/#/file/${fileIdTag.value}/view`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title={fileIdTag.value}
+                        >
+                          {shortenId(fileIdTag.value)}
+                        </a>
+                      </span>
+                    )}
+                  </div>
+                </dd>
+              </>
+            )}
+
+            {/* III. Blockchain Info */}
             <dt>Transaction ID</dt>
             <dd className="mono">
-              <a href={`https://viewblock.io/arweave/tx/${id}`} target="_blank" rel="noopener noreferrer">
-                {id}
+              <a href={`https://viewblock.io/arweave/tx/${id}`} target="_blank" rel="noopener noreferrer" title={id}>
+                {shortenId(id)}
               </a>
             </dd>
 
             <dt>Owner</dt>
             <dd className="mono">
-              <a href={`https://viewblock.io/arweave/address/${owner.address}`} target="_blank" rel="noopener noreferrer">
-                {owner.address}
+              <a href={`https://viewblock.io/arweave/address/${owner.address}`} target="_blank" rel="noopener noreferrer" title={owner.address}>
+                {shortenId(owner.address)}
               </a>
             </dd>
-
-            <dt>When</dt>
-            <dd>{new Date(block.timestamp * 1000).toLocaleString()}</dd>
 
             <dt>Block Height</dt>
             <dd>{block.height}</dd>
 
-            <dt>Size</dt>
-            <dd>{data.size.toLocaleString()} bytes</dd>
+            <dt>When</dt>
+            <dd>{new Date(block.timestamp * 1000).toLocaleString()}</dd>
 
-            <dt>Fee</dt>
-            <dd>{parseFloat(fee.ar).toFixed(6)} AR</dd>
+            {parseFloat(fee.ar) > 0 && (
+              <>
+                <dt>Fee</dt>
+                <dd>{parseFloat(fee.ar).toFixed(6)} AR</dd>
+              </>
+            )}
 
-            <dt>Quantity</dt>
-            <dd>{parseFloat(quantity.ar).toFixed(6)} AR</dd>
+            {parseFloat(quantity.ar) > 0 && (
+              <>
+                <dt>Quantity</dt>
+                <dd>{parseFloat(quantity.ar).toFixed(6)} AR</dd>
+              </>
+            )}
 
-            <dt>Tags</dt>
+            {/* IV. Raw Transaction Tags */}
+            <dt>Transaction Tags</dt>
             <dd>
-            <div className="tag-list">
-              {visibleTags.map(tag => {
-                let valueNode: JSX.Element | string = tag.value;
-                const gatewayDataSourceNoProtocol = GATEWAY_DATA_SOURCE[0].replace("https://","")
+              <div className="tag-list">
+                {visibleTags.map(tag => {
+                  const isDriveOrFile = tag.name === 'Drive-Id' || tag.name === 'File-Id'
+                  if (isDriveOrFile) return null // Already shown above
 
-                if (tag.name === 'Drive-Id') {
-                  valueNode = (
-                    <a
-                      href={`https://ardrive.${gatewayDataSourceNoProtocol}/#/drives/${tag.value}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      {tag.value}
-                    </a>
-                  );
-                } else if (tag.name === 'File-Id') {
-                  valueNode = (
-                    <a
-                      href={`https://ardrive.${gatewayDataSourceNoProtocol}/#/file/${tag.value}/view`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      {tag.value}
-                    </a>
-                  );
-                }
-
-                return (
-                  <span className="tag-item" key={`${tag.name}-${tag.value}`}>
-                    <strong>{tag.name}:</strong> {valueNode}
-                  </span>
-                );
-              })}
+                  return (
+                    <span className="tag-item" key={`${tag.name}-${tag.value}`}>
+                      <strong>{tag.name}:</strong> {tag.value}
+                    </span>
+                  )
+                })}
                 {tags.length > 5 && (
-                <button
+                  <button
                     class="more-tags"
                     onClick={() => setShowAllTags(f => !f)}
-                >
+                  >
                     {showAllTags ? 'Show fewer tags' : `+${tags.length - 5} more`}
-                </button>
+                  </button>
                 )}
-            </div>
+              </div>
             </dd>
+
+            {/* V. ArFS Custom Tags */}
+            {arfsMeta && Object.keys(arfsMeta.customTags).length > 0 && (
+              <>
+                <dt>ArFS Tags</dt>
+                <dd>
+                  <div className="tag-list">
+                    {Object.entries(arfsMeta.customTags).map(([key, value]) => (
+                      <span className="tag-item" key={`arfs-${key}-${value}`}>
+                        <strong>{key}:</strong> {value}
+                      </span>
+                    ))}
+                  </div>
+                </dd>
+              </>
+            )}
           </dl>
         </div>
       </aside>

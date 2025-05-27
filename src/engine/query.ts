@@ -67,11 +67,20 @@ export async function fetchTxsRange(
   media: MediaType,
   minHeight: number,
   maxHeight: number,
-  owner?: string
+  owner?: string,
+  appName?: string,
 ): Promise<TxMeta[]> {
   const ct = CONTENT_TYPES[media];
 
+  // These apps all use a specific wallet for their users.
+  // TODO - set this to allow for multiple owners
+  if (appName === 'Paragraph') {
+    owner = "w5AtiFsNvORfcRtikbdrp2tzqixb05vdPw-ZhgVkD70"
+  } else if (appName === 'Manifold') {
+    owner = "NVkSolD-1AJcJ0BMfEASJjIuak3Y6CvDJZ4XOIUbU9g"
+  }
   const ownersArg = owner ? `owners: ["${owner}"],` : "";
+  const appNameArg = appName ? `{ name: "App-Name", values: "${appName}" }` : ""
   const entityTypeArg = media === 'arfs' ? `{ name: "Entity-Type", values: "file" }` : ""
 
   const query = `
@@ -88,6 +97,7 @@ export async function fetchTxsRange(
         tags: [
           { name: "Content-Type", values: $ct }
           ${entityTypeArg}
+          ${appNameArg}
         ]
         sort: HEIGHT_DESC
         first: $first
