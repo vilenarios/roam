@@ -18,7 +18,7 @@ function shortenId(id: string, head = 6, tail = 6): string {
 export const DetailsDrawer = ({ txMeta, open, onClose }: DetailsDrawerProps): JSX.Element | null => {
   if (!open || !txMeta) return null
 
-  const { id, owner, fee, quantity, tags, data, block, arfsMeta } = txMeta
+  const { id, owner, fee, quantity, tags, block, arfsMeta } = txMeta
   const [showAllTags, setShowAllTags] = useState(false)
   const visibleTags = showAllTags ? tags : tags.slice(0, 5)
   const gatewayDataSourceNoProtocol = GATEWAY_DATA_SOURCE[0].replace('https://', '')
