@@ -70,7 +70,7 @@ export const CONTENT_TYPES: Record<MediaType, string[]> = {
   ...BASE_CONTENT_TYPES,
   everything: Object.values(BASE_CONTENT_TYPES).reduce<string[]>((acc, arr) => {
     arr.forEach((ct) => {
-      if (!acc.includes(ct)) acc.push(ct);
+      if (!acc.includes(ct) && ct !== 'application/json') acc.push(ct);
     });
     return acc;
   }, []),
